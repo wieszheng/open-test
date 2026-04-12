@@ -9,6 +9,7 @@ export interface Script {
   name: string
   description: string
   code: string
+  language?: string
   category: string
   author: string
   tags: string[]
@@ -24,6 +25,7 @@ export interface ScriptFormData {
   name: string
   description: string
   code: string
+  language?: string
   category: string
   author: string
   tags: string[]
