@@ -7,6 +7,8 @@ import {
 import { Header } from "@/components/Header";
 import { Console } from "@/components/Console";
 import { ScriptMarket } from "@/components/ScriptMarket";
+import { TestCaseMarket } from "@/components/TestCaseMarket";
+
 import {
   Home,
   Search,
@@ -18,6 +20,7 @@ import {
   Mail,
   HelpCircle,
   Code2,
+  FlaskConical,
 } from "lucide-react";
 
 function App() {
@@ -28,6 +31,7 @@ function App() {
   const menuItems: MenuItem[] = [
     { id: "home", icon: Home, label: "首页" },
     { id: "script-market", icon: Code2, label: "脚本市场" },
+    { id: "test-cases", icon: FlaskConical, label: "测试用例" },
     { id: "favorites", icon: Heart, label: "收藏" },
     { id: "bookmarks", icon: Bookmark, label: "书签" },
     { id: "profile", icon: User, label: "个人中心" },
@@ -70,13 +74,17 @@ function App() {
       />
 
       {/* 主内容区域 */}
-      <main className="flex-1 ml-19 pt-15">
+      <main className="flex-1 ml-19">
         <div className="p-8">
           {/* 脚本市场页面 */}
           {activeMenuId === "script-market" && <ScriptMarket />}
 
+          {/* 测试用例页面 */}
+          {activeMenuId === "test-cases" && <TestCaseMarket />}
+
           {/* 控制台页面 */}
           {activeTab === "console" && activeMenuId === "home" && <Console />}
+
 
           {/* 测试环境页面 */}
           {activeTab === "env" && (

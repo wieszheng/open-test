@@ -56,6 +56,8 @@
     --color-cream: oklch(0.972 0.008 85.38);
     --color-charcoal: oklch(0.206 0.013 265.08);
     --color-warm-gray: oklch(0.451 0.014 255.06);
+    /* 代码编辑器背景 - 两种模式下都保持深色 */
+    --charcoal: oklch(0.206 0.013 265.08);
 
     /* Pixel Neon Colors */
     --color-pixel-blue: oklch(0.868 0.192 229.92);

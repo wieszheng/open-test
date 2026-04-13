@@ -156,3 +156,189 @@ export async function fetchTestExecutions(params?: {
   if (!res.ok) throw new Error("获取测试执行记录失败")
   return res.json()
 }
+
+// ===================== 测试用例 API =====================
+
+export interface TestCase {
+  id: number
+  name: string
+  description: string
+  case_type: "api" | "ui" | "e2e" | "unit" | "perf"
+  priority: "P0" | "P1" | "P2" | "P3"
+  status: "active" | "deprecated" | "draft"
+  module: string
+  directory_id?: number
+  preconditions: string
+  test_steps: string
+  expected_results: string
+  author: string
+  tags: string[]
+  script_id?: number
+  is_automated: boolean
+  is_parallel: boolean
+  total_runs: number
+  passed_runs: number
+  failed_runs: number
+  pass_rate: number
+  avg_duration: number
+  last_run_time?: string
+  flaky: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface TestCaseFormData {
+  name: string
+  description?: string
+  case_type?: string
+  priority?: string
+  status?: string
+  module?: string
+  directory_id?: number
+  preconditions?: string
+  test_steps?: string
+  expected_results?: string
+  author?: string
+  tags?: string[]
+  script_id?: number
+  is_automated?: boolean
+  is_parallel?: boolean
+}
+
+// ===================== 目录 API =====================
+
+export interface Directory {
+  id: number
+  name: string
+  description: string
+  icon: string
+  color: string
+  sort_order: number
+  parent_id?: number
+  case_count: number
+  is_default: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface DirectoryFormData {
+  name: string
+  description?: string
+  icon?: string
+  color?: string
+  sort_order?: number
+  parent_id?: number
+}
+
+export async function fetchDirectories(): Promise<Directory[]> {
+  const res = await fetch(`${API_BASE}/directories`)
+  if (!res.ok) throw new Error("获取目录列表失败")
+  return res.json()
+}
+
+export async function createDirectory(data: DirectoryFormData): Promise<Directory> {
+  const res = await fetch(`${API_BASE}/directories`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error("创建目录失败")
+  return res.json()
+}
+
+export async function updateDirectory(
+  id: number,
+  data: Partial<DirectoryFormData>
+): Promise<Directory> {
+  const res = await fetch(`${API_BASE}/directories/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error("更新目录失败")
+  return res.json()
+}
+
+export async function deleteDirectory(id: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/directories/${id}`, {
+    method: "DELETE",
+  })
+  if (!res.ok) throw new Error("删除目录失败")
+}
+
+export interface TestCaseStats {
+  total: number
+  automated: number
+  manual: number
+  flaky: number
+  pass_rate: number
+  by_type: Record<string, number>
+  by_priority: Record<string, number>
+  by_status: Record<string, number>
+  by_module: Record<string, number>
+}
+
+export async function fetchTestCases(params?: {
+  skip?: number
+  limit?: number
+  case_type?: string
+  priority?: string
+  status?: string
+  module?: string
+  search?: string
+}): Promise<TestCase[]> {
+  const searchParams = new URLSearchParams()
+  if (params?.skip) searchParams.set("skip", String(params.skip))
+  if (params?.limit) searchParams.set("limit", String(params.limit))
+  if (params?.case_type) searchParams.set("case_type", params.case_type)
+  if (params?.priority) searchParams.set("priority", params.priority)
+  if (params?.status) searchParams.set("status", params.status)
+  if (params?.module) searchParams.set("module", params.module)
+  if (params?.search) searchParams.set("search", params.search)
+
+  const res = await fetch(`${API_BASE}/test-cases?${searchParams}`)
+  if (!res.ok) throw new Error("获取测试用例列表失败")
+  return res.json()
+}
+
+export async function fetchTestCaseStats(): Promise<TestCaseStats> {
+  const res = await fetch(`${API_BASE}/test-cases/stats`)
+  if (!res.ok) throw new Error("获取测试用例统计失败")
+  return res.json()
+}
+
+export async function fetchTestCase(id: number): Promise<TestCase> {
+  const res = await fetch(`${API_BASE}/test-cases/${id}`)
+  if (!res.ok) throw new Error("获取测试用例详情失败")
+  return res.json()
+}
+
+export async function createTestCase(data: TestCaseFormData): Promise<TestCase> {
+  const res = await fetch(`${API_BASE}/test-cases`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error("创建测试用例失败")
+  return res.json()
+}
+
+export async function updateTestCase(
+  id: number,
+  data: Partial<TestCaseFormData>
+): Promise<TestCase> {
+  const res = await fetch(`${API_BASE}/test-cases/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error("更新测试用例失败")
+  return res.json()
+}
+
+export async function deleteTestCase(id: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/test-cases/${id}`, {
+    method: "DELETE",
+  })
+  if (!res.ok) throw new Error("删除测试用例失败")
+}

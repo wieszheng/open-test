@@ -16,6 +16,7 @@ import {
   Monitor,
   FlaskConical,
   FileText,
+  Bug,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";

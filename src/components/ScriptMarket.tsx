@@ -2,22 +2,6 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -57,7 +41,6 @@ import {
   Trash2,
   X,
   Loader2,
-  MoreHorizontal,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -337,15 +320,47 @@ function ScriptCard({
       "bg-sidebar rounded-2xl p-4 border border-white/5 transition-colors group flex flex-col h-full relative",
       isDeleting && "opacity-50 pointer-events-none"
     )}>
-      {/* 右上角评分 */}
-      <div className="absolute top-4 right-4 flex items-center gap-1 text-yellow-400">
-        <Star className="w-3.5 h-3.5 fill-current" />
-        <span className="text-sm font-medium">{script.rating}</span>
-      </div>
-
-      <div className="flex items-start justify-between mb-3 pr-12">
+      <div className="flex items-start justify-between mb-3">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-coral/10 to-lavender/10 flex items-center justify-center">
           <Code2 className="w-5 h-5 text-coral" />
+        </div>
+        {/* 评分 + 操作按钮 */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-yellow-400">
+            <Star className="w-3.5 h-3.5 fill-current" />
+            <span className="text-sm font-medium">{script.rating}</span>
+          </div>
+          {/* 操作按钮 */}
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-full bg-muted/80 hover:bg-muted"
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(script);
+              }}
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-full bg-muted/80 hover:text-red-500"
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(script.id);
+              }}
+            >
+              {isDeleting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -397,31 +412,13 @@ function ScriptCard({
           <Eye className="w-3.5 h-3.5 mr-1" />
           查看
         </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              className="flex-1 h-8 rounded-full bg-coral hover:bg-coral/90"
-            >
-              <MoreHorizontal className="w-3.5 h-3.5 mr-1" />
-              更多
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>
-              <Download className="w-3.5 h-3.5 mr-2" />
-              下载
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onEdit(script)}>
-              <Edit2 className="w-3.5 h-3.5 mr-2" />
-              编辑
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDelete(script.id)} disabled={isDeleting}>
-              <Trash2 className="w-3.5 h-3.5 mr-2" />
-              删除
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button
+          size="sm"
+          className="flex-1 h-8 rounded-full bg-coral hover:bg-coral/90"
+        >
+          <Download className="w-3.5 h-3.5 mr-1" />
+          使用
+        </Button>
       </div>
     </div>
   );
@@ -700,7 +697,7 @@ function ScriptFormDialog({
                 />
               ) : (
                 <textarea
-                  className="flex min-h-[200px] w-full rounded-lg px-3 py-2 text-sm font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                  className="flex min-h-[200px] w-full rounded-lg border border-input bg-charcoal px-3 py-2 text-sm font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
                   placeholder="# 在此输入脚本代码..."
                   value={formData.code || ""}
                   onChange={(e) =>
@@ -811,10 +808,6 @@ export function ScriptMarket() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
-
-  // 获取待删除脚本的名称
-  const scriptToDelete = scripts.find((s) => s.id === deleteConfirmId);
 
   // 加载脚本数据
   const loadScripts = useCallback(async () => {
@@ -895,18 +888,11 @@ export function ScriptMarket() {
     }
   };
 
-  // 删除脚本（打开确认对话框）
-  const handleDelete = (id: number) => {
-    setDeleteConfirmId(id);
-  };
-
-  // 确认删除
-  const confirmDelete = async () => {
-    if (!deleteConfirmId) return;
-    setDeletingId(deleteConfirmId);
-    setDeleteConfirmId(null);
+  // 删除脚本
+  const handleDelete = async (id: number) => {
+    setDeletingId(id);
     try {
-      await apiDeleteScript(deleteConfirmId);
+      await apiDeleteScript(id);
       loadScripts();
     } catch (error) {
       console.error("删除脚本失败:", error);
@@ -916,7 +902,7 @@ export function ScriptMarket() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-14">
       {/* 精选脚本 - 固定显示 */}
       <FeaturedScriptsCard />
 
@@ -1015,32 +1001,6 @@ export function ScriptMarket() {
         mode={dialogMode}
         isSaving={isSaving}
       />
-
-      {/* 删除确认对话框 */}
-      <AlertDialog open={deleteConfirmId !== null} onOpenChange={() => setDeleteConfirmId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              确定要删除脚本 "{scriptToDelete?.name}" 吗？此操作无法撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={confirmDelete}
-              disabled={deletingId !== null}
-            >
-              {deletingId !== null ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                "删除"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

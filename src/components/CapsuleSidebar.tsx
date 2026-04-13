@@ -1,11 +1,6 @@
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  TooltipProvider,
-} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import {
   Home,
   Search,
@@ -17,13 +12,12 @@ import {
   Mail,
   HelpCircle,
   type LucideIcon,
-} from "lucide-react";
-import { useState } from "react";
+} from "lucide-react"
+import { useState } from "react"
 
 /**
  * Logo 组件 - 品牌标识 (SVG 图标)
  */
-
 export function Logo() {
   return (
     <svg
@@ -79,29 +73,29 @@ export function Logo() {
         strokeLinecap="round"
       />
     </svg>
-  );
+  )
 }
 
 interface MenuItem {
   /** 菜单项唯一标识 */
-  id: string;
+  id: string
   /** 显示的图标 */
-  icon: LucideIcon;
+  icon: LucideIcon
   /** 悬浮提示文本 */
-  label: string;
+  label: string
   /** 是否禁用 */
-  disabled?: boolean;
+  disabled?: boolean
 }
 
 interface CapsuleSidebarProps {
   /** 自定义类名 */
-  className?: string;
+  className?: string
   /** 菜单数据 */
-  items?: MenuItem[];
+  items?: MenuItem[]
   /** 当前选中项 */
-  activeId?: string;
+  activeId?: string
   /** 选中项变化回调 */
-  onSelect?: (id: string) => void;
+  onSelect?: (id: string) => void
 }
 
 /**
@@ -117,7 +111,7 @@ const defaultMenuItems: MenuItem[] = [
   { id: "profile", icon: User, label: "个人中心" },
   { id: "settings", icon: Settings, label: "设置" },
   { id: "help", icon: HelpCircle, label: "帮助中心", disabled: true },
-];
+]
 
 /**
  * 胶囊样式侧边菜单栏组件
@@ -134,28 +128,28 @@ export function CapsuleSidebar({
   activeId: controlledActiveId,
   onSelect,
 }: CapsuleSidebarProps) {
-  const [internalActiveId, setInternalActiveId] = useState<string>("home");
+  const [internalActiveId, setInternalActiveId] = useState<string>("home")
 
-  const activeId = controlledActiveId ?? internalActiveId;
+  const activeId = controlledActiveId ?? internalActiveId
 
   const handleSelect = (item: MenuItem) => {
-    if (item.disabled) return;
+    if (item.disabled) return
 
-    setInternalActiveId(item.id);
-    onSelect?.(item.id);
-  };
+    setInternalActiveId(item.id)
+    onSelect?.(item.id)
+  }
 
   return (
     <TooltipProvider delayDuration={0}>
       <nav
         className={cn(
           "flex flex-col items-center gap-2 p-2 bg-sidebar rounded-2xl shadow-lg",
-          className,
+          className
         )}
       >
         {items.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeId === item.id;
+          const Icon = item.icon
+          const isActive = activeId === item.id
 
           return (
             <Tooltip key={item.id}>
@@ -168,8 +162,7 @@ export function CapsuleSidebar({
                   className={cn(
                     "group relative w-11 h-11 rounded-2xl",
                     "hover:bg-sidebar-accent",
-                    isActive &&
-                      "bg-primary text-primary-foreground shadow-md hover:bg-primary/90",
+                    isActive && "bg-primary text-primary-foreground shadow-md hover:bg-primary/90"
                   )}
                   aria-label={item.label}
                   aria-current={isActive ? "page" : undefined}
@@ -178,7 +171,7 @@ export function CapsuleSidebar({
                   <Icon
                     className={cn(
                       "size-5 transition-transform duration-300",
-                      "group-hover:scale-110",
+                      "group-hover:scale-110"
                     )}
                     strokeWidth={isActive ? 2.5 : 2}
                   />
@@ -189,11 +182,11 @@ export function CapsuleSidebar({
                 {item.label}
               </TooltipContent>
             </Tooltip>
-          );
+          )
         })}
       </nav>
     </TooltipProvider>
-  );
+  )
 }
 
-export { type MenuItem };
+export { type MenuItem }
