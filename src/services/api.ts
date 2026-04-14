@@ -342,3 +342,53 @@ export async function deleteTestCase(id: number): Promise<void> {
   })
   if (!res.ok) throw new Error("删除测试用例失败")
 }
+
+// ===================== 工作流 API =====================
+
+export interface Workflow {
+  id: number
+  test_case_id: number
+  name: string
+  description: string
+  nodes: unknown[]
+  edges: unknown[]
+  is_enabled: boolean
+  total_runs: number
+  last_run_status: string
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkflowFormData {
+  name: string
+  description?: string
+  nodes: unknown[]
+  edges: unknown[]
+}
+
+export async function fetchWorkflow(testCaseId: number): Promise<Workflow | null> {
+  const res = await fetch(`${API_BASE}/workflows/${testCaseId}`)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error("获取工作流失败")
+  return res.json()
+}
+
+export async function saveWorkflow(
+  testCaseId: number,
+  data: WorkflowFormData
+): Promise<Workflow> {
+  const res = await fetch(`${API_BASE}/workflows/${testCaseId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error("保存工作流失败")
+  return res.json()
+}
+
+export async function deleteWorkflow(workflowId: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/workflows/${workflowId}`, {
+    method: "DELETE",
+  })
+  if (!res.ok) throw new Error("删除工作流失败")
+}

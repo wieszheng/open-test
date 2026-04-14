@@ -53,7 +53,7 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-screen">
       {/* 右上角 Logo */}
       <div className="fixed top-4 left-6 z-50">
         <Logo />
@@ -71,7 +71,7 @@ function App() {
 
 
       {/* 主内容区域 */}
-      <main className="flex-1 flex flex-col overflow-hidden relative ml-19">
+      <main className="flex-1 ml-19">
         {/* 顶部导航栏 - 固定 */}
         <Header
           activeTab={activeTab}
@@ -79,7 +79,7 @@ function App() {
           isDarkMode={isDarkMode}
           onThemeToggle={handleThemeToggle}
         />
-        <div className="flex-1 overflow-auto p-8">
+        <div className="p-8">
           {/* 脚本市场页面 */}
           {activeMenuId === "script-market" && <ScriptMarket />}
 

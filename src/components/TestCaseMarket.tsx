@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -452,12 +451,13 @@ function StatsCards({ stats }: { stats: TestCaseStats | null }) {
     return (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="bg-sidebar border-white/5">
-            <CardContent className="p-4">
-              <Skeleton className="h-4 w-20 mb-2" />
-              <Skeleton className="h-8 w-16" />
-            </CardContent>
-          </Card>
+          <div key={i} className="bg-sidebar rounded-2xl p-4 border border-white/5">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+              <div className="w-4 h-4 bg-muted rounded animate-pulse" />
+              <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+            </div>
+            <div className="h-8 w-16 bg-muted rounded animate-pulse" />
+          </div>
         ))}
       </div>
     )
@@ -465,44 +465,36 @@ function StatsCards({ stats }: { stats: TestCaseStats | null }) {
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card className="bg-sidebar border-white/5">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <FlaskConical className="w-4 h-4" />
-            <span>总用例数</span>
-          </div>
-          <p className="text-2xl font-semibold">{stats.total}</p>
-        </CardContent>
-      </Card>
-      <Card className="bg-sidebar border-white/5">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <Zap className="w-4 h-4" />
-            <span>自动化率</span>
-          </div>
-          <p className="text-2xl font-semibold">
-            {Math.round(stats.automated / Math.max(stats.total, 1) * 100)}%
-          </p>
-        </CardContent>
-      </Card>
-      <Card className="bg-sidebar border-white/5">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-            <span>通过率</span>
-          </div>
-          <p className="text-2xl font-semibold text-green-500">{stats.pass_rate}%</p>
-        </CardContent>
-      </Card>
-      <Card className="bg-sidebar border-white/5">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <AlertTriangle className="w-4 h-4 text-yellow-500" />
-            <span>不稳定用例</span>
-          </div>
-          <p className="text-2xl font-semibold text-yellow-500">{stats.flaky}</p>
-        </CardContent>
-      </Card>
+      <div className="bg-sidebar rounded-2xl p-4 border border-white/5">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+          <FlaskConical className="w-4 h-4" />
+          <span>总用例数</span>
+        </div>
+        <p className="text-2xl font-semibold">{stats.total}</p>
+      </div>
+      <div className="bg-sidebar rounded-2xl p-4 border border-white/5">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+          <Zap className="w-4 h-4" />
+          <span>自动化率</span>
+        </div>
+        <p className="text-2xl font-semibold">
+          {Math.round(stats.automated / Math.max(stats.total, 1) * 100)}%
+        </p>
+      </div>
+      <div className="bg-sidebar rounded-2xl p-4 border border-white/5">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+          <CheckCircle2 className="w-4 h-4 text-green-500" />
+          <span>通过率</span>
+        </div>
+        <p className="text-2xl font-semibold text-green-500">{stats.pass_rate}%</p>
+      </div>
+      <div className="bg-sidebar rounded-2xl p-4 border border-white/5">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+          <AlertTriangle className="w-4 h-4 text-yellow-500" />
+          <span>不稳定用例</span>
+        </div>
+        <p className="text-2xl font-semibold text-yellow-500">{stats.flaky}</p>
+      </div>
     </div>
   )
 }
@@ -574,7 +566,7 @@ function TestCaseCard({
             className="rounded-full bg-pixel-green/10 text-pixel-green text-xs py-0 px-2"
           >
             <Zap className="w-3 h-3 mr-1" />
-            自动化
+            已编排
           </Badge>
         )}
         {testCase.flaky && (
@@ -831,14 +823,14 @@ function TestCaseFormDialog({
                   <Select
                     value={String(formData.directory_id || "")}
                     onValueChange={(value) =>
-                      setFormData({ ...formData, directory_id: value ? Number(value) : undefined })
+                      setFormData({ ...formData, directory_id: value === "none" ? undefined : Number(value) })
                     }
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="选择目录" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">无目录</SelectItem>
+                      <SelectItem value="none">无目录</SelectItem>
                       {directories?.map((dir) => (
                         <SelectItem key={dir.id} value={String(dir.id)}>
                           {dir.name}
@@ -1226,7 +1218,7 @@ export function TestCaseMarket() {
   }
 
   return (
-    <div className="flex gap-4 pt-14">
+    <div className="flex gap-4">
       <DirectorySidebar
         directories={directories}
         activeId={activeDirectoryId}
@@ -1234,7 +1226,7 @@ export function TestCaseMarket() {
         onEdit={handleEditDir}
       />
 
-      <div className="flex-1 space-y-6 min-w-0">
+      <div className="flex-1 space-y-6 min-w-0 pt-14">
         <StatsCards stats={stats} />
 
         <div className="flex items-center gap-3 flex-wrap">

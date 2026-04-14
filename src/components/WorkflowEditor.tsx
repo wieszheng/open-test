@@ -3,7 +3,7 @@
  * 核心理念：选择测试用例 → 为该用例编排自动化执行步骤流
  * 基于 React Flow (@xyflow/react) 实现
  */
-import { useState, useCallback, useRef, useMemo, useEffect, type DragEvent } from "react"
+import { useState, useCallback, useMemo, useEffect, type DragEvent } from "react"
 import {
   ReactFlow,
   Background,
@@ -19,12 +19,10 @@ import {
   type Connection,
   type Edge,
   type Node,
-  type ReactFlowInstance,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 
 import { cn } from "@/lib/utils"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,7 +36,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  Plus,
   Save,
   Play,
   Search,
@@ -49,9 +46,7 @@ import {
   Workflow,
   Loader2,
   CheckCircle2,
-  XCircle,
   Clock,
-  ArrowLeft,
   Trash2,
   Settings,
   X,
@@ -67,90 +62,7 @@ import {
   STEP_TEMPLATES,
   STEP_CATEGORIES,
 } from "@/components/workflow/nodes"
-import { fetchTestCases, type TestCase } from "@/services/api"
-
-// ===================== 类型定义 =====================
-
-/** 测试用例的自动化步骤流 */
-interface AutomationFlow {
-  testCaseId: number
-  testCase: TestCase
-  nodes: Node[]
-  edges: Edge[]
-  lastModified?: string
-}
-
-// ===================== Mock 测试用例列表 =====================
-
-const MOCK_TEST_CASES: TestCase[] = [
-  { id: 1, name: "用户登录接口测试", description: "POST /api/v1/login 验证用户名/密码正确返回 token，错误返回 401", case_type: "api", priority: "P0", status: "active", module: "用户", preconditions: "用户已注册", test_steps: "1.发送登录请求 2.校验响应", expected_results: "返回200+token", author: "张三", tags: ["login", "auth"], is_automated: true, is_parallel: true, total_runs: 128, passed_runs: 126, failed_runs: 2, pass_rate: 98, avg_duration: 1.2, flaky: false, created_at: "2026-01-01", updated_at: "2026-04-10" },
-  { id: 2, name: "创建订单接口测试", description: "POST /api/v1/orders 验证创建订单、库存扣减、价格计算", case_type: "api", priority: "P0", status: "active", module: "订单", preconditions: "用户已登录，商品存在", test_steps: "1.获取token 2.创建订单 3.校验订单数据", expected_results: "订单创建成功", author: "李四", tags: ["order", "create"], is_automated: true, is_parallel: false, total_runs: 95, passed_runs: 90, failed_runs: 5, pass_rate: 94, avg_duration: 2.8, flaky: true, created_at: "2026-01-15", updated_at: "2026-04-08" },
-  { id: 3, name: "注册页面 UI 测试", description: "验证注册表单各字段校验、密码强度提示、注册提交流程", case_type: "ui", priority: "P0", status: "active", module: "用户", preconditions: "无", test_steps: "1.打开注册页 2.验证表单校验 3.提交注册", expected_results: "注册成功跳转", author: "王五", tags: ["register", "ui"], is_automated: true, is_parallel: false, total_runs: 50, passed_runs: 48, failed_runs: 2, pass_rate: 96, avg_duration: 8.5, flaky: false, created_at: "2026-02-01", updated_at: "2026-04-05" },
-  { id: 4, name: "商品搜索接口测试", description: "GET /api/v1/products?q=xxx 验证关键词搜索、分页、排序", case_type: "api", priority: "P1", status: "active", module: "商品", preconditions: "无", test_steps: "1.搜索商品 2.校验结果", expected_results: "搜索结果正确", author: "张三", tags: ["search", "product"], is_automated: false, is_parallel: true, total_runs: 80, passed_runs: 79, failed_runs: 1, pass_rate: 99, avg_duration: 0.8, flaky: false, created_at: "2026-01-20", updated_at: "2026-04-11" },
-  { id: 5, name: "购物车结算 E2E 测试", description: "从加入购物车到确认支付完成的完整流程", case_type: "e2e", priority: "P0", status: "active", module: "支付", preconditions: "用户已登录、购物车有商品", test_steps: "1.查看购物车 2.下单 3.支付 4.校验", expected_results: "支付成功", author: "赵六", tags: ["payment", "e2e"], is_automated: true, is_parallel: false, total_runs: 30, passed_runs: 28, failed_runs: 2, pass_rate: 93, avg_duration: 15.2, flaky: true, created_at: "2026-03-01", updated_at: "2026-04-12" },
-  { id: 6, name: "用户权限校验测试", description: "验证不同角色（admin/editor/viewer）的接口权限边界", case_type: "api", priority: "P1", status: "active", module: "权限", preconditions: "多角色账户", test_steps: "1.以各角色登录 2.请求受限接口", expected_results: "权限拦截正确", author: "李四", tags: ["auth", "rbac"], is_automated: false, is_parallel: true, total_runs: 40, passed_runs: 38, failed_runs: 2, pass_rate: 95, avg_duration: 3.5, flaky: false, created_at: "2026-02-10", updated_at: "2026-04-09" },
-]
-
-// ===================== Mock 已有自动化步骤流 =====================
-
-const MOCK_FLOWS: Record<number, { nodes: Node[]; edges: Edge[] }> = {
-  1: {
-    // 用户登录接口测试的自动化步骤
-    nodes: [
-      { id: "s1", type: "httpRequest", position: { x: 0, y: 120 }, data: { label: "登录请求", method: "POST", url: "/api/v1/login", body: '{ "username": "test", "password": "123456" }', status: "success" } },
-      { id: "s2", type: "assertion", position: { x: 320, y: 40 }, data: { label: "校验状态码", assertType: "status_code", expression: "response.status", expected: "200", status: "success" } },
-      { id: "s3", type: "extract", position: { x: 320, y: 200 }, data: { label: "提取 Token", source: "json_path", expression: "$.data.token", varName: "auth_token", status: "success" } },
-      { id: "s4", type: "assertion", position: { x: 620, y: 40 }, data: { label: "校验 Token 非空", assertType: "json_path", expression: "$.data.token", expected: "not_empty", status: "success" } },
-      { id: "s5", type: "httpRequest", position: { x: 620, y: 200 }, data: { label: "获取用户信息", method: "GET", url: "/api/v1/user/profile", status: "success" } },
-      { id: "s6", type: "assertion", position: { x: 920, y: 120 }, data: { label: "校验用户名", assertType: "json_path", expression: "$.data.username", expected: "test", status: "success" } },
-    ],
-    edges: [
-      { id: "e1-2", source: "s1", target: "s2" },
-      { id: "e1-3", source: "s1", target: "s3" },
-      { id: "e2-4", source: "s2", target: "s4" },
-      { id: "e3-5", source: "s3", target: "s5", animated: true, label: "use token" },
-      { id: "e4-6", source: "s4", target: "s6" },
-      { id: "e5-6", source: "s5", target: "s6" },
-    ],
-  },
-  3: {
-    // 注册页面 UI 测试的自动化步骤
-    nodes: [
-      { id: "s1", type: "webUiAction", position: { x: 0, y: 120 }, data: { label: "打开注册页", action: "navigate", url: "https://app.example.com/register" } },
-      { id: "s2", type: "webUiAction", position: { x: 300, y: 40 }, data: { label: "输入用户名", action: "type", selector: "#username", value: "newuser01" } },
-      { id: "s3", type: "webUiAction", position: { x: 300, y: 200 }, data: { label: "输入密码", action: "type", selector: "#password", value: "Abc@123456" } },
-      { id: "s4", type: "webUiAction", position: { x: 580, y: 120 }, data: { label: "点击注册按钮", action: "click", selector: "button[type=submit]" } },
-      { id: "s5", type: "wait", position: { x: 820, y: 120 }, data: { label: "等待跳转", seconds: 2 } },
-      { id: "s6", type: "assertion", position: { x: 1020, y: 120 }, data: { label: "校验跳转成功", assertType: "contains", expression: "window.location", expected: "/dashboard" } },
-    ],
-    edges: [
-      { id: "e1-2", source: "s1", target: "s2" },
-      { id: "e1-3", source: "s1", target: "s3" },
-      { id: "e2-4", source: "s2", target: "s4" },
-      { id: "e3-4", source: "s3", target: "s4" },
-      { id: "e4-5", source: "s4", target: "s5" },
-      { id: "e5-6", source: "s5", target: "s6" },
-    ],
-  },
-  2: {
-    // 创建订单接口测试的自动化步骤
-    nodes: [
-      { id: "s1", type: "httpRequest", position: { x: 0, y: 120 }, data: { label: "用户登录", method: "POST", url: "/api/v1/login", body: '{"username":"buyer","password":"pass"}' } },
-      { id: "s2", type: "extract", position: { x: 300, y: 120 }, data: { label: "提取 Token", source: "json_path", expression: "$.data.token", varName: "token" } },
-      { id: "s3", type: "sqlQuery", position: { x: 580, y: 40 }, data: { label: "查询库存", connection: "prod_db", query: "SELECT stock FROM products WHERE id=1" } },
-      { id: "s4", type: "httpRequest", position: { x: 580, y: 200 }, data: { label: "创建订单", method: "POST", url: "/api/v1/orders", body: '{"product_id":1,"qty":1}' } },
-      { id: "s5", type: "assertion", position: { x: 880, y: 120 }, data: { label: "校验订单创建", assertType: "status_code", expression: "response.status", expected: "201" } },
-      { id: "s6", type: "sqlQuery", position: { x: 880, y: 280 }, data: { label: "校验库存扣减", connection: "prod_db", query: "SELECT stock FROM products WHERE id=1" } },
-    ],
-    edges: [
-      { id: "e1-2", source: "s1", target: "s2" },
-      { id: "e2-3", source: "s2", target: "s3" },
-      { id: "e2-4", source: "s2", target: "s4", animated: true },
-      { id: "e4-5", source: "s4", target: "s5" },
-      { id: "e4-6", source: "s4", target: "s6" },
-    ],
-  },
-}
+import { fetchTestCases, fetchWorkflow, saveWorkflow, type TestCase } from "@/services/api"
 
 // ===================== 步骤面板（左侧拖拽区） =====================
 
@@ -211,12 +123,12 @@ function StepPalette({ collapsed, onToggle }: { collapsed: boolean; onToggle: ()
               <div key={cat.id}>
                 <button
                   onClick={() => toggleCat(cat.id)}
-                  className="flex items-center gap-2 w-full px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md"
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md"
                 >
                   <ChevronRight className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-90")} />
                   <CatIcon className="w-3.5 h-3.5" />
                   <span>{cat.label}</span>
-                  <Badge variant="secondary" className="ml-auto text-[9px] px-1.5 py-0 h-4 bg-muted/50">{catTemplates.length}</Badge>
+                  <Badge variant="secondary" className="ml-auto text-[11px] px-1.5 py-0 h-4 bg-muted/50">{catTemplates.length}</Badge>
                 </button>
                 {isExpanded && (
                   <div className="ml-2 space-y-0.5 mt-0.5">
@@ -233,8 +145,8 @@ function StepPalette({ collapsed, onToggle }: { collapsed: boolean; onToggle: ()
                             <Icon className="w-3 h-3 text-muted-foreground" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[11px] font-medium truncate">{template.label}</p>
-                            <p className="text-[9px] text-muted-foreground/50 truncate">{template.description}</p>
+                            <p className="text-[12px] font-medium truncate">{template.label}</p>
+                            <p className="text-[10px] text-muted-foreground/50 truncate">{template.description}</p>
                           </div>
                           <GripVertical className="w-3 h-3 text-muted-foreground/15 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
@@ -490,10 +402,11 @@ function PropertyPanel({
   )
 }
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldGroup({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
+      {description && <p className="text-[10px] text-muted-foreground/60">{description}</p>}
       {children}
     </div>
   )
@@ -508,6 +421,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
+const CASE_TYPE_OPTIONS = [
+  { value: "all", label: "全部类型" },
+  { value: "api", label: "接口测试" },
+  { value: "ui", label: "UI测试" },
+  { value: "e2e", label: "端到端" },
+  { value: "unit", label: "单元测试" },
+  { value: "perf", label: "性能测试" },
+]
+
+const PRIORITY_OPTIONS = [
+  { value: "all", label: "全部优先级" },
+  { value: "P0", label: "P0" },
+  { value: "P1", label: "P1" },
+  { value: "P2", label: "P2" },
+  { value: "P3", label: "P3" },
+]
+
 function TestCasePickerDialog({
   open,
   onOpenChange,
@@ -520,21 +450,42 @@ function TestCasePickerDialog({
   const [cases, setCases] = useState<TestCase[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState("")
+  const [filterType, setFilterType] = useState("all")
+  const [filterPriority, setFilterPriority] = useState("all")
 
   useEffect(() => {
     if (!open) return
     setLoading(true)
-    fetchTestCases({ limit: 100 })
-      .then(setCases)
-      .catch(() => setCases(MOCK_TEST_CASES))
+    fetchTestCases({ limit: 200 })
+      .then((casesData) => setCases(casesData))
       .finally(() => setLoading(false))
   }, [open])
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return cases
-    const s = search.toLowerCase()
-    return cases.filter((c) => c.name.toLowerCase().includes(s) || c.description.toLowerCase().includes(s))
-  }, [cases, search])
+    return cases.filter((c) => {
+      // 搜索过滤
+      if (search.trim()) {
+        const s = search.toLowerCase()
+        if (!c.name.toLowerCase().includes(s) && !c.description?.toLowerCase().includes(s)) {
+          return false
+        }
+      }
+      // 类型过滤
+      if (filterType !== "all" && c.case_type !== filterType) {
+        return false
+      }
+      // 优先级过滤
+      if (filterPriority !== "all" && c.priority !== filterPriority) {
+        return false
+      }
+      return true
+    })
+  }, [cases, search, filterType, filterPriority])
+
+  const stats = useMemo(() => ({
+    total: cases.length,
+    workflowed: cases.filter(c => c.is_automated).length,
+  }), [cases])
 
   const PRIORITY_COLORS: Record<string, string> = {
     P0: "bg-red-500/10 text-red-500 border-red-500/20",
@@ -543,55 +494,178 @@ function TestCasePickerDialog({
     P3: "bg-green-500/10 text-green-500 border-green-500/20",
   }
 
+  const TYPE_META: Record<string, { icon: LucideIcon; color: string }> = {
+    api: { icon: Globe, color: "text-blue-500 bg-blue-500/10" },
+    ui: { icon: MousePointerClick, color: "text-orange-500 bg-orange-500/10" },
+    e2e: { icon: Workflow, color: "text-purple-500 bg-purple-500/10" },
+    unit: { icon: Cpu, color: "text-emerald-500 bg-emerald-500/10" },
+    perf: { icon: Zap, color: "text-amber-500 bg-amber-500/10" },
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FlaskConical className="w-5 h-5 text-coral" />
-            选择要编排的测试用例
-          </DialogTitle>
-        </DialogHeader>
-        <div className="flex items-center gap-3 mb-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="搜索用例名称..." className="pl-9 h-9 rounded-xl" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <DialogContent className="sm:max-w-[700px] h-[80vh] flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 shrink-0 border-b border-white/5">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <FlaskConical className="w-5 h-5 text-coral" />
+              选择测试用例
+            </DialogTitle>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-pixel-blue" />
+                {stats.total} 个用例
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-green-500" />
+                {stats.workflowed} 已编排
+              </span>
+            </div>
           </div>
-        </div>
-        <ScrollArea className="max-h-[400px]">
+
+          {/* 筛选栏 */}
+          <div className="flex items-center gap-3 mt-4">
+            {/* 搜索框 */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="搜索用例名称..."
+                className="pl-9 h-9 rounded-xl bg-muted/30 border-white/5"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            {/* 类型筛选 */}
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-28 h-9 rounded-xl bg-muted/30 border-white/5 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CASE_TYPE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* 优先级筛选 */}
+            <Select value={filterPriority} onValueChange={setFilterPriority}>
+              <SelectTrigger className="w-28 h-9 rounded-xl bg-muted/30 border-white/5 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PRIORITY_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </DialogHeader>
+
+        {/* 用例列表 */}
+        <ScrollArea className="flex-1 min-h-0 h-full">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <Search className="w-10 h-10 mb-3 opacity-30" />
               <p className="text-sm">暂无匹配的测试用例</p>
+              <p className="text-xs mt-1">尝试调整筛选条件</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {filtered.map((tc) => (
-                <div
-                  key={tc.id}
-                  onClick={() => { onSelect(tc); onOpenChange(false) }}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-sidebar hover:bg-muted/30 cursor-pointer transition-colors group"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <p className="text-sm font-medium truncate group-hover:text-coral transition-colors">{tc.name}</p>
-                      <Badge className={cn("text-[10px] px-1.5 py-0 rounded-full shrink-0", PRIORITY_COLORS[tc.priority])}>{tc.priority}</Badge>
-                      {MOCK_FLOWS[tc.id] && (
-                        <Badge className="text-[10px] px-1.5 py-0 rounded-full bg-green-500/10 text-green-400 border-green-500/20">
-                          <CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />已编排
+            <div className="p-4 space-y-2">
+              {filtered.map((tc) => {
+                const isAutomated = tc.is_automated
+                const typeMeta = TYPE_META[tc.case_type] || TYPE_META.api
+                const TypeIcon = typeMeta.icon
+
+                return (
+                  <div
+                    key={tc.id}
+                    onClick={() => { onSelect(tc); onOpenChange(false) }}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200",
+                      "hover:scale-[1.01] hover:shadow-md group",
+                      isAutomated
+                        ? "bg-gradient-to-r from-green-500/5 to-transparent border-green-500/20 hover:border-green-500/30"
+                        : "bg-sidebar border-white/5 hover:bg-muted/30 hover:border-white/10"
+                    )}
+                  >
+                    {/* 类型图标 */}
+                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", typeMeta.color)}>
+                      <TypeIcon className="w-5 h-5" />
+                    </div>
+
+                    {/* 用例信息 */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-sm font-medium truncate group-hover:text-coral transition-colors">
+                          {tc.name}
+                        </p>
+                        <Badge className={cn("text-[10px] px-1.5 py-0 rounded-full shrink-0", PRIORITY_COLORS[tc.priority])}>
+                          {tc.priority}
                         </Badge>
+                        {isAutomated && (
+                          <Badge className="text-[10px] px-1.5 py-0 rounded-full bg-green-500/10 text-green-400 border-green-500/20 shrink-0">
+                            <CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />
+                            已编排
+                          </Badge>
+                        )}
+                        {!isAutomated && (
+                          <Badge className="text-[10px] px-1.5 py-0 rounded-full bg-muted/50 text-muted-foreground border-0 shrink-0">
+                            未编排
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {tc.description || "暂无描述"}
+                      </p>
+                      {tc.module && (
+                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                          模块: {tc.module}
+                        </p>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground truncate">{tc.description || "暂无描述"}</p>
+
+                    {/* 统计信息 */}
+                    {tc.total_runs > 0 && (
+                      <div className="hidden sm:flex items-center gap-4 text-[11px] text-muted-foreground shrink-0">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{tc.total_runs}次</span>
+                        </div>
+                        <div className={cn(
+                          "flex items-center gap-1 font-medium",
+                          tc.pass_rate >= 90 ? "text-green-500" : tc.pass_rate >= 70 ? "text-yellow-500" : "text-red-500"
+                        )}>
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>{tc.pass_rate}%</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 选中指示器 */}
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-coral transition-colors shrink-0" />
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </ScrollArea>
+
+        {/* 底部统计 */}
+        <div className="px-6 py-3 border-t border-white/5 bg-muted/20 shrink-0">
+          <p className="text-xs text-muted-foreground text-center">
+            共 {filtered.length} 个用例符合条件
+            {filtered.length !== cases.length && `（共 ${cases.length} 个）`}
+          </p>
+        </div>
       </DialogContent>
     </Dialog>
   )
@@ -618,23 +692,39 @@ export function WorkflowEditor() {
   const [panelCollapsed, setPanelCollapsed] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
-  const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null)
+  const [rfInstance, setRfInstance] = useState<any>(null)
 
   // 当选择新的用例时，加载其流
   useEffect(() => {
-    if (testCase && MOCK_FLOWS[testCase.id]) {
-      setNodes(MOCK_FLOWS[testCase.id].nodes)
-      setEdges(
-        MOCK_FLOWS[testCase.id].edges.map((e) => ({
-          ...e,
-          type: "smoothstep",
-          markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
-        }))
-      )
-    } else {
+    if (!testCase) {
       setNodes([])
       setEdges([])
+      return
     }
+
+    fetchWorkflow(testCase.id)
+      .then((workflow) => {
+        if (workflow && workflow.nodes && workflow.edges) {
+          setNodes(workflow.nodes.map((n: Node) => ({
+            ...n,
+            data: { ...n.data, status: n.data?.status || "idle" },
+          })))
+          setEdges(
+            workflow.edges.map((e: Edge) => ({
+              ...e,
+              type: "smoothstep",
+              markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
+            }))
+          )
+        } else {
+          setNodes([])
+          setEdges([])
+        }
+      })
+      .catch(() => {
+        setNodes([])
+        setEdges([])
+      })
   }, [testCase, setNodes, setEdges])
 
   // 连接
@@ -693,11 +783,23 @@ export function WorkflowEditor() {
     [setNodes, setEdges],
   )
 
-  // 模拟保存
-  const handleSave = useCallback(() => {
+  // 保存工作流
+  const handleSave = useCallback(async () => {
+    if (!testCase) return
     setIsSaving(true)
-    setTimeout(() => setIsSaving(false), 800)
-  }, [])
+    try {
+      await saveWorkflow(testCase.id, {
+        name: `${testCase.name} - 工作流`,
+        description: "",
+        nodes,
+        edges,
+      })
+    } catch (error) {
+      console.error("保存工作流失败:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }, [testCase, nodes, edges])
 
   // 模拟运行步骤
   const handleRun = useCallback(() => {
@@ -777,7 +879,7 @@ export function WorkflowEditor() {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onReconnect={onReconnect}
-            onInit={setRfInstance}
+            onInit={(instance) => setRfInstance(instance)}
             onDrop={onDrop}
             onDragOver={onDragOver}
             onNodeClick={onNodeClick}
