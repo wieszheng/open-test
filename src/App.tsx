@@ -8,6 +8,7 @@ import { Header } from "@/components/Header";
 import { Console } from "@/components/Console";
 import { ScriptMarket } from "@/components/ScriptMarket";
 import { TestCaseMarket } from "@/components/TestCaseMarket";
+import { WorkflowEditor } from "@/components/WorkflowEditor";
 
 import {
   Home,
@@ -21,6 +22,7 @@ import {
   HelpCircle,
   Code2,
   FlaskConical,
+  Workflow,
 } from "lucide-react";
 
 function App() {
@@ -32,6 +34,7 @@ function App() {
     { id: "home", icon: Home, label: "首页" },
     { id: "script-market", icon: Code2, label: "脚本市场" },
     { id: "test-cases", icon: FlaskConical, label: "测试用例" },
+    { id: "automation", icon: Workflow, label: "自动化" },
     { id: "favorites", icon: Heart, label: "收藏" },
     { id: "bookmarks", icon: Bookmark, label: "书签" },
     { id: "profile", icon: User, label: "个人中心" },
@@ -50,7 +53,7 @@ function App() {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen">
       {/* 右上角 Logo */}
       <div className="fixed top-4 left-6 z-50">
         <Logo />
@@ -65,22 +68,26 @@ function App() {
         />
       </aside>
 
-      {/* 顶部导航栏 - 固定 */}
-      <Header
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        isDarkMode={isDarkMode}
-        onThemeToggle={handleThemeToggle}
-      />
+
 
       {/* 主内容区域 */}
-      <main className="flex-1 ml-19">
-        <div className="p-8">
+      <main className="flex-1 flex flex-col overflow-hidden relative ml-19">
+        {/* 顶部导航栏 - 固定 */}
+        <Header
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          isDarkMode={isDarkMode}
+          onThemeToggle={handleThemeToggle}
+        />
+        <div className="flex-1 overflow-auto p-8">
           {/* 脚本市场页面 */}
           {activeMenuId === "script-market" && <ScriptMarket />}
 
           {/* 测试用例页面 */}
           {activeMenuId === "test-cases" && <TestCaseMarket />}
+
+          {/* 自动化工作流页面 */}
+          {activeMenuId === "automation" && <WorkflowEditor />}
 
           {/* 控制台页面 */}
           {activeTab === "console" && activeMenuId === "home" && <Console />}

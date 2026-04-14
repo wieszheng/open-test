@@ -144,7 +144,7 @@ function DirectorySidebar({
   // 分离顶层目录和子目录
   const topLevelDirs = directories.filter((d) => !d.parent_id)
   const childDirs = directories.filter((d) => d.parent_id)
-  
+
   // 获取子目录
   const getChildren = (parentId: number) => {
     return childDirs.filter((d) => d.parent_id === parentId)
@@ -153,7 +153,7 @@ function DirectorySidebar({
   const renderDirItem = (dir: Directory, isChild = false) => {
     const Icon = getIcon(dir.icon)
     const children = getChildren(dir.id)
-    
+
     return (
       <div key={dir.id}>
         <div
@@ -1063,7 +1063,7 @@ export function TestCaseMarket() {
   const [isSaving, setIsSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
-  
+
   const [dirDialogOpen, setDirDialogOpen] = useState(false)
   const [editingDirectory, setEditingDirectory] = useState<Directory | null>(null)
   const [isDirSaving, setIsDirSaving] = useState(false)
@@ -1096,8 +1096,8 @@ export function TestCaseMarket() {
         priority: activePriority === "all" ? undefined : activePriority,
         search: searchQuery.trim() || undefined,
       })
-      const filtered = activeDirectoryId === "all" 
-        ? data 
+      const filtered = activeDirectoryId === "all"
+        ? data
         : data.filter((tc: TestCase) => tc.directory_id === Number(activeDirectoryId))
       setTestCases(filtered)
     } catch (error) {
@@ -1226,7 +1226,7 @@ export function TestCaseMarket() {
   }
 
   return (
-    <div className="flex gap-4">
+    <div className="flex gap-4 pt-14">
       <DirectorySidebar
         directories={directories}
         activeId={activeDirectoryId}
@@ -1234,7 +1234,7 @@ export function TestCaseMarket() {
         onEdit={handleEditDir}
       />
 
-      <div className="flex-1 space-y-6 min-w-0 pt-14">
+      <div className="flex-1 space-y-6 min-w-0">
         <StatsCards stats={stats} />
 
         <div className="flex items-center gap-3 flex-wrap">
