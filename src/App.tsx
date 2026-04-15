@@ -9,6 +9,7 @@ import { Console } from "@/components/Console";
 import { ScriptMarket } from "@/components/ScriptMarket";
 import { TestCaseMarket } from "@/components/TestCaseMarket";
 import { WorkflowEditor } from "@/components/WorkflowEditor";
+import { TestReport } from "@/components/TestReport";
 
 import {
   Home,
@@ -96,9 +97,7 @@ function App() {
               </div>
             )}
             {activeTab === "report" && (
-              <div className="text-center py-20">
-                <p className="text-muted-foreground">测试报告页面开发中...</p>
-              </div>
+              <TestReport />
             )}
           </div>
         )}

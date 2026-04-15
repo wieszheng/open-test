@@ -125,6 +125,18 @@ function DirectorySidebar({
   onSelect: (id: string) => void
   onEdit: (dir: Directory) => void
 }) {
+  // 颜色映射表
+  const colorMap: Record<string, string> = {
+    blue: "text-blue-500",
+    green: "text-green-500",
+    red: "text-red-500",
+    orange: "text-orange-500",
+    purple: "text-purple-500",
+    yellow: "text-yellow-500",
+    pink: "text-pink-500",
+    cyan: "text-cyan-500",
+  }
+
   const getIcon = (iconName: string) => {
     const iconMap: Record<string, typeof Folder> = {
       folder: Folder,
@@ -152,12 +164,13 @@ function DirectorySidebar({
   const renderDirItem = (dir: Directory, isChild = false) => {
     const Icon = getIcon(dir.icon)
     const children = getChildren(dir.id)
+    const iconColor = dir.color ? colorMap[dir.color] || "text-muted-foreground" : "text-muted-foreground"
 
     return (
       <div key={dir.id}>
         <div
           className={cn(
-            "group flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
+            "group flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition-colors",
             activeId === String(dir.id)
               ? "bg-primary/10 text-primary"
               : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
@@ -166,10 +179,10 @@ function DirectorySidebar({
         >
           <button
             onClick={() => onSelect(String(dir.id))}
-            className="flex items-center gap-2 flex-1 min-w-0"
+            className="flex items-center gap-2 flex-1 min-w-0 w-full overflow-hidden"
           >
-            <Icon className="w-4 h-4 shrink-0" />
-            <span className="flex-1 text-left truncate">{dir.name}</span>
+            <Icon className={cn("w-4 h-4 shrink-0", iconColor)} />
+            <span className="text-left truncate max-w-[70px]" title={dir.name}>{dir.name}</span>
           </button>
           <Badge
             variant="secondary"
@@ -196,16 +209,16 @@ function DirectorySidebar({
   }
 
   return (
-    <div className="w-56 shrink-0 sticky top-0 self-start overflow-hidden">
+    <div className="w-56 shrink-0 overflow-hidden h-full">
       <div className="bg-sidebar rounded-2xl border border-white/5 p-3 h-full flex flex-col">
-        <div className="flex items-center justify-between mb-3 px-2">
+        <div className="flex items-center justify-between mb-3 px-2 shrink-0">
           <div className="flex items-center gap-2">
             <FolderOpen className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm font-medium">目录</span>
           </div>
         </div>
-        <ScrollArea className="flex-1">
-          <div className="space-y-1 pr-2">
+        <ScrollArea className="h-0 flex-1 min-h-0">
+          <div className="space-y-1 pr-2 w-full overflow-hidden">
             <button
               onClick={() => onSelect("all")}
               className={cn(
@@ -215,8 +228,8 @@ function DirectorySidebar({
                   : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
               )}
             >
-              <Layers className="w-4 h-4 shrink-0" />
-              <span className="flex-1 text-left truncate">全部用例</span>
+              <Layers className="w-4 h-4 shrink-0 text-blue-500" />
+              <span className="text-left truncate max-w-[100px]">全部用例</span>
             </button>
 
             {topLevelDirs.map((dir) => renderDirItem(dir))}
@@ -451,12 +464,13 @@ function StatsCards({ stats }: { stats: TestCaseStats | null }) {
     return (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="bg-sidebar border-white/5">
-            <CardContent className="p-4">
-              <Skeleton className="h-4 w-20 mb-2" />
-              <Skeleton className="h-8 w-16" />
-            </CardContent>
-          </Card>
+          <div key={i} className="bg-sidebar rounded-2xl p-4 border border-white/5">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+              <div className="w-4 h-4 bg-muted rounded animate-pulse" />
+              <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+            </div>
+            <div className="h-8 w-16 bg-muted rounded animate-pulse" />
+          </div>
         ))}
       </div>
     )
@@ -464,48 +478,39 @@ function StatsCards({ stats }: { stats: TestCaseStats | null }) {
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card className="bg-sidebar border-white/5">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <FlaskConical className="w-4 h-4" />
-            <span>总用例数</span>
-          </div>
-          <p className="text-2xl font-semibold">{stats.total}</p>
-        </CardContent>
-      </Card>
-      <Card className="bg-sidebar border-white/5">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <Zap className="w-4 h-4" />
-            <span>自动化率</span>
-          </div>
-          <p className="text-2xl font-semibold">
-            {Math.round(stats.automated / Math.max(stats.total, 1) * 100)}%
-          </p>
-        </CardContent>
-      </Card>
-      <Card className="bg-sidebar border-white/5">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-            <span>通过率</span>
-          </div>
-          <p className="text-2xl font-semibold text-green-500">{stats.pass_rate}%</p>
-        </CardContent>
-      </Card>
-      <Card className="bg-sidebar border-white/5">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <AlertTriangle className="w-4 h-4 text-yellow-500" />
-            <span>不稳定用例</span>
-          </div>
-          <p className="text-2xl font-semibold text-yellow-500">{stats.flaky}</p>
-        </CardContent>
-      </Card>
+      <div className="bg-sidebar rounded-2xl p-4 border border-white/5">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+          <FlaskConical className="w-4 h-4" />
+          <span>总用例数</span>
+        </div>
+        <p className="text-2xl font-semibold">{stats.total}</p>
+      </div>
+      <div className="bg-sidebar rounded-2xl p-4 border border-white/5">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+          <Zap className="w-4 h-4" />
+          <span>自动化率</span>
+        </div>
+        <p className="text-2xl font-semibold">
+          {Math.round(stats.automated / Math.max(stats.total, 1) * 100)}%
+        </p>
+      </div>
+      <div className="bg-sidebar rounded-2xl p-4 border border-white/5">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+          <CheckCircle2 className="w-4 h-4 text-green-500" />
+          <span>通过率</span>
+        </div>
+        <p className="text-2xl font-semibold text-green-500">{stats.pass_rate}%</p>
+      </div>
+      <div className="bg-sidebar rounded-2xl p-4 border border-white/5">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+          <AlertTriangle className="w-4 h-4 text-yellow-500" />
+          <span>不稳定用例</span>
+        </div>
+        <p className="text-2xl font-semibold text-yellow-500">{stats.flaky}</p>
+      </div>
     </div>
   )
 }
-
 // ===================== 用例卡片 =====================
 function TestCaseCard({
   testCase,
@@ -828,16 +833,16 @@ function TestCaseFormDialog({
                   </p>
                 ) : (
                   <Select
-                    value={String(formData.directory_id || "")}
+                    value={formData.directory_id ? String(formData.directory_id) : "none"}
                     onValueChange={(value) =>
-                      setFormData({ ...formData, directory_id: value ? Number(value) : undefined })
+                      setFormData({ ...formData, directory_id: value === "none" ? undefined : Number(value) })
                     }
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="选择目录" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">无目录</SelectItem>
+                      <SelectItem value="none">无目录</SelectItem>
                       {directories?.map((dir) => (
                         <SelectItem key={dir.id} value={String(dir.id)}>
                           {dir.name}
@@ -1214,7 +1219,7 @@ export function TestCaseMarket() {
   }
 
   return (
-    <div className="flex gap-4">
+    <div className="flex gap-4 h-full">
       <DirectorySidebar
         directories={directories}
         activeId={activeDirectoryId}
@@ -1222,7 +1227,7 @@ export function TestCaseMarket() {
         onEdit={handleEditDir}
       />
 
-      <div className="flex-1 space-y-6 min-w-0">
+      <div className="flex-1 space-y-6 min-w-0 overflow-auto h-full">
         <StatsCards stats={stats} />
 
         <div className="flex items-center gap-3 flex-wrap">
