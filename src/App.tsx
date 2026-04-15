@@ -54,7 +54,7 @@ function App() {
 
   return (
     <div className="flex h-screen">
-      {/* 右上角 Logo */}
+      {/* Logo */}
       <div className="fixed top-4 left-6 z-50">
         <Logo />
       </div>
@@ -68,45 +68,40 @@ function App() {
         />
       </aside>
 
-
-
       {/* 主内容区域 */}
-      <main className="flex-1 flex flex-col overflow-hidden relative ml-19">
-        {/* 顶部导航栏 - 固定 */}
+      <main className="flex-1 flex flex-col overflow-hidden ml-19">
+        {/* 顶部导航栏 - sticky，参与布局流 */}
         <Header
           activeTab={activeTab}
           onTabChange={setActiveTab}
           isDarkMode={isDarkMode}
           onThemeToggle={handleThemeToggle}
         />
-        <div className="flex-1 overflow-auto p-8">
-          {/* 脚本市场页面 */}
-          {activeMenuId === "script-market" && <ScriptMarket />}
 
-          {/* 测试用例页面 */}
-          {activeMenuId === "test-cases" && <TestCaseMarket />}
+        {/* 自动化工作流：撑满剩余高度，无 padding */}
+        {activeMenuId === "automation" ? (
+          <div className="flex-1 overflow-auto pt-2 pl-6 pb-6">
+            <WorkflowEditor />
+          </div>
+        ) : (
+          /* 普通页面：可滚动，带 padding */
+          <div className="flex-1 overflow-auto pt-2 pl-6 pb-6">
+            {activeMenuId === "script-market" && <ScriptMarket />}
+            {activeMenuId === "test-cases" && <TestCaseMarket />}
 
-          {/* 自动化工作流页面 */}
-          {activeMenuId === "automation" && <WorkflowEditor />}
-
-          {/* 控制台页面 */}
-          {activeTab === "console" && activeMenuId === "home" && <Console />}
-
-
-          {/* 测试环境页面 */}
-          {activeTab === "env" && (
-            <div className="text-center py-20">
-              <p className="text-muted-foreground">测试环境页面开发中...</p>
-            </div>
-          )}
-
-          {/* 测试报告页面 */}
-          {activeTab === "report" && (
-            <div className="text-center py-20">
-              <p className="text-muted-foreground">测试报告页面开发中...</p>
-            </div>
-          )}
-        </div>
+            {activeTab === "console" && activeMenuId === "home" && <Console />}
+            {activeTab === "env" && (
+              <div className="text-center py-20">
+                <p className="text-muted-foreground">测试环境页面开发中...</p>
+              </div>
+            )}
+            {activeTab === "report" && (
+              <div className="text-center py-20">
+                <p className="text-muted-foreground">测试报告页面开发中...</p>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

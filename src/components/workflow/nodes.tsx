@@ -390,7 +390,7 @@ export const HttpRequestNode = memo(({ data, selected }: NodeProps<HttpStepNode>
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <Badge className={cn("text-[10px] px-1.5 py-0 rounded-md font-mono font-bold border shrink-0", METHOD_COLORS[data.method] || METHOD_COLORS.GET)}>
+        <Badge className={cn("text-[10px] px-1.5 py-0 rounded-xl font-mono font-bold border shrink-0", METHOD_COLORS[data.method] || METHOD_COLORS.GET)}>
           {data.method}
         </Badge>
         <span className="text-[10px] text-muted-foreground/60 font-mono truncate flex-1">{data.url || "/api/..."}</span>
@@ -426,10 +426,10 @@ export const WebUiActionNode = memo(({ data, selected }: NodeProps<WebUiStepNode
         </div>
       </div>
       {data.selector && (
-        <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-lg px-2 py-1 font-mono truncate">{data.selector}</div>
+        <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-xl px-2 py-1 font-mono truncate">{data.selector}</div>
       )}
       {data.url && (
-        <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-lg px-2 py-1 font-mono truncate">{data.url}</div>
+        <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-xl px-2 py-1 font-mono truncate">{data.url}</div>
       )}
       <Handle type="source" position={Position.Right} className={cn(handleSourceClass, "!border-orange-500/40")} />
     </div>
@@ -461,7 +461,7 @@ export const AppUiActionNode = memo(({ data, selected }: NodeProps<AppUiStepNode
         </div>
       </div>
       {(data.selector || data.app_id) && (
-        <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-lg px-2 py-1 font-mono truncate">{data.selector || data.app_id}</div>
+        <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-xl px-2 py-1 font-mono truncate">{data.selector || data.app_id}</div>
       )}
       <Handle type="source" position={Position.Right} className={cn(handleSourceClass, "!border-purple-500/40")} />
     </div>
@@ -486,7 +486,7 @@ export const SqlQueryNode = memo(({ data, selected }: NodeProps<SqlStepNode>) =>
           <p className="text-[10px] text-muted-foreground">数据库: {data.connection || "default"}</p>
         </div>
       </div>
-      {data.query && <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-lg px-2 py-1 font-mono truncate">{data.query}</div>}
+      {data.query && <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-xl px-2 py-1 font-mono truncate">{data.query}</div>}
       <Handle type="source" position={Position.Right} className={cn(handleSourceClass, "!border-emerald-500/40")} />
     </div>
   )
@@ -515,7 +515,7 @@ export const AssertionNode = memo(({ data, selected }: NodeProps<AssertStepNode>
           <p className="text-[10px] text-muted-foreground">{ASSERT_LABELS[data.assertType] || data.assertType}</p>
         </div>
       </div>
-      {data.expression && <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-lg px-2 py-1 font-mono truncate">{data.expression} → {data.expected}</div>}
+      {data.expression && <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-xl px-2 py-1 font-mono truncate">{data.expression} → {data.expected}</div>}
       <Handle type="source" position={Position.Right} className={cn(handleSourceClass, "!border-violet-500/40")} />
     </div>
   )
@@ -539,7 +539,7 @@ export const ExtractNode = memo(({ data, selected }: NodeProps<ExtractStepNode>)
           <p className="text-[10px] text-muted-foreground">{data.source === "json_path" ? "JSONPath" : data.source === "regex" ? "正则" : data.source === "header" ? "Header" : data.source === "cookie" ? "Cookie" : "CSS"}</p>
         </div>
       </div>
-      {data.varName && <div className="mt-1.5 text-[10px] bg-muted/20 rounded-lg px-2 py-1 font-mono truncate"><span className="text-cyan-500">${`{${data.varName}}`}</span> = {data.expression}</div>}
+      {data.varName && <div className="mt-1.5 text-[10px] bg-muted/20 rounded-xl px-2 py-1 font-mono truncate"><span className="text-cyan-500">${`{${data.varName}}`}</span> = {data.expression}</div>}
       <Handle type="source" position={Position.Right} className={cn(handleSourceClass, "!border-cyan-500/40")} />
     </div>
   )
@@ -563,7 +563,7 @@ export const ScriptNode = memo(({ data, selected }: NodeProps<ScriptStepNode>) =
           <p className="text-[10px] text-muted-foreground">{data.language}</p>
         </div>
       </div>
-      {data.code && <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-lg px-2 py-1 font-mono truncate">{data.code.substring(0, 60)}</div>}
+      {data.code && <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-xl px-2 py-1 font-mono truncate">{data.code.substring(0, 60)}</div>}
       <Handle type="source" position={Position.Right} className={cn(handleSourceClass, "!border-amber-500/40")} />
     </div>
   )
@@ -579,7 +579,7 @@ export const WaitNode = memo(({ data, selected }: NodeProps<WaitStepNode>) => {
       <StatusDot status={data.status} />
       <Handle type="target" position={Position.Left} className={cn(handleTargetClass, "!border-slate-500/40")} />
       <div className="flex items-center gap-2">
-        <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center border shrink-0", c.iconBg, c.border)}>
+        <div className={cn("w-7 h-7 rounded-xl flex items-center justify-center border shrink-0", c.iconBg, c.border)}>
           <Timer className={cn("w-3.5 h-3.5", c.text)} />
         </div>
         <div>
@@ -611,10 +611,16 @@ export const ConditionNode = memo(({ data, selected }: NodeProps<ConditionStepNo
         </div>
       </div>
       {/* True / False 输出 */}
-      <Handle type="source" position={Position.Right} id="true" style={{ top: "30%" }} className={cn(handleSourceClass, "!border-green-500/50")} />
-      <span className="absolute text-[8px] font-bold text-green-500/70 right-5" style={{ top: "22%" }}>✓</span>
-      <Handle type="source" position={Position.Right} id="false" style={{ top: "70%" }} className={cn(handleSourceClass, "!border-red-500/50")} />
-      <span className="absolute text-[8px] font-bold text-red-500/70 right-5" style={{ top: "62%" }}>✗</span>
+      <div className="mt-2.5 grid grid-cols-2 gap-1.5">
+        <div className="flex items-center justify-end gap-1 text-[9px] font-bold text-green-500 bg-green-500/8 border border-green-500/20 rounded-xl px-2 py-1">
+          <CheckCircle2 className="w-2.5 h-2.5" />True
+        </div>
+        <div className="flex items-center gap-1 text-[9px] font-bold text-red-500 bg-red-500/8 border border-red-500/20 rounded-xl px-2 py-1">
+          <XCircle className="w-2.5 h-2.5" />False
+        </div>
+      </div>
+      <Handle type="source" position={Position.Right} id="true" style={{ top: "42%" }} className={cn(handleSourceClass, "!border-green-500/60 !bg-green-500/20")} />
+      <Handle type="source" position={Position.Right} id="false" style={{ top: "72%" }} className={cn(handleSourceClass, "!border-red-500/60 !bg-red-500/20")} />
     </div>
   )
 })

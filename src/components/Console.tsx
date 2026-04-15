@@ -417,7 +417,7 @@ function AIPromoCard() {
  */
 export function Console() {
   return (
-    <div className="grid grid-cols-12 gap-4 pt-14">
+    <div className="grid grid-cols-12 gap-4">
       {/* 顶部行 */}
       <div className="col-span-12 lg:col-span-7">
         <HeroCard />

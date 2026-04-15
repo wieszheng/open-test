@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(pip install:*)",
+      "Bash(ls /Users/v_zhengshiwei/Desktop/work/langchain/open-test/open-server/seed*.py)"
+    ]
+  }
+}

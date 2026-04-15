@@ -201,7 +201,6 @@ export interface TestCaseFormData {
   author?: string
   tags?: string[]
   script_id?: number
-  is_automated?: boolean
   is_parallel?: boolean
 }
 
@@ -341,4 +340,40 @@ export async function deleteTestCase(id: number): Promise<void> {
     method: "DELETE",
   })
   if (!res.ok) throw new Error("删除测试用例失败")
+}
+
+
+// ===================== 工作流 / Flow API =====================
+
+export interface FlowData {
+  nodes: unknown[]
+  edges: unknown[]
+  updated_at?: string
+}
+
+export async function fetchFlow(caseId: number): Promise<FlowData | null> {
+  const res = await fetch(`${API_BASE}/test-cases/${caseId}/flow`)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error("获取工作流失败")
+  const data = await res.json()
+  return data  // null when no flow exists
+}
+
+export async function saveFlow(
+  caseId: number,
+  data: { nodes: unknown[]; edges: unknown[] },
+): Promise<FlowData> {
+  const res = await fetch(`${API_BASE}/test-cases/${caseId}/flow`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error("保存工作流失败")
+  return res.json()
+}
+
+export async function fetchWorkflowedCaseIds(): Promise<number[]> {
+  const res = await fetch(`${API_BASE}/workflows/test-case-ids`)
+  if (!res.ok) return []
+  return res.json()
 }

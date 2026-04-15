@@ -24,7 +24,6 @@ import {
 import "@xyflow/react/dist/style.css"
 
 import { cn } from "@/lib/utils"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,20 +37,32 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  Plus,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   Save,
   Play,
   Search,
   ChevronRight,
-  ChevronLeft,
   Layers,
   GripVertical,
   Workflow,
   Loader2,
   CheckCircle2,
   XCircle,
-  Clock,
-  ArrowLeft,
   Trash2,
   Settings,
   X,
@@ -60,6 +71,9 @@ import {
   Globe,
   Cpu,
   MousePointerClick,
+  Terminal,
+  ChevronDown,
+  ChevronUp,
   type LucideIcon,
 } from "lucide-react"
 import {
@@ -67,94 +81,30 @@ import {
   STEP_TEMPLATES,
   STEP_CATEGORIES,
 } from "@/components/workflow/nodes"
-import { fetchTestCases, type TestCase } from "@/services/api"
+import { fetchTestCases, fetchFlow, saveFlow, fetchWorkflowedCaseIds, type TestCase } from "@/services/api"
 
 // ===================== 类型定义 =====================
 
-/** 测试用例的自动化步骤流 */
-interface AutomationFlow {
-  testCaseId: number
-  testCase: TestCase
-  nodes: Node[]
-  edges: Edge[]
-  lastModified?: string
+/** 执行日志条目 */
+interface LogEntry {
+  nodeId: string
+  label: string
+  status: "running" | "success" | "error"
+  duration?: number
+  message?: string
+  timestamp: string
 }
 
-// ===================== Mock 测试用例列表 =====================
-
-const MOCK_TEST_CASES: TestCase[] = [
-  { id: 1, name: "用户登录接口测试", description: "POST /api/v1/login 验证用户名/密码正确返回 token，错误返回 401", case_type: "api", priority: "P0", status: "active", module: "用户", preconditions: "用户已注册", test_steps: "1.发送登录请求 2.校验响应", expected_results: "返回200+token", author: "张三", tags: ["login", "auth"], is_automated: true, is_parallel: true, total_runs: 128, passed_runs: 126, failed_runs: 2, pass_rate: 98, avg_duration: 1.2, flaky: false, created_at: "2026-01-01", updated_at: "2026-04-10" },
-  { id: 2, name: "创建订单接口测试", description: "POST /api/v1/orders 验证创建订单、库存扣减、价格计算", case_type: "api", priority: "P0", status: "active", module: "订单", preconditions: "用户已登录，商品存在", test_steps: "1.获取token 2.创建订单 3.校验订单数据", expected_results: "订单创建成功", author: "李四", tags: ["order", "create"], is_automated: true, is_parallel: false, total_runs: 95, passed_runs: 90, failed_runs: 5, pass_rate: 94, avg_duration: 2.8, flaky: true, created_at: "2026-01-15", updated_at: "2026-04-08" },
-  { id: 3, name: "注册页面 UI 测试", description: "验证注册表单各字段校验、密码强度提示、注册提交流程", case_type: "ui", priority: "P0", status: "active", module: "用户", preconditions: "无", test_steps: "1.打开注册页 2.验证表单校验 3.提交注册", expected_results: "注册成功跳转", author: "王五", tags: ["register", "ui"], is_automated: true, is_parallel: false, total_runs: 50, passed_runs: 48, failed_runs: 2, pass_rate: 96, avg_duration: 8.5, flaky: false, created_at: "2026-02-01", updated_at: "2026-04-05" },
-  { id: 4, name: "商品搜索接口测试", description: "GET /api/v1/products?q=xxx 验证关键词搜索、分页、排序", case_type: "api", priority: "P1", status: "active", module: "商品", preconditions: "无", test_steps: "1.搜索商品 2.校验结果", expected_results: "搜索结果正确", author: "张三", tags: ["search", "product"], is_automated: false, is_parallel: true, total_runs: 80, passed_runs: 79, failed_runs: 1, pass_rate: 99, avg_duration: 0.8, flaky: false, created_at: "2026-01-20", updated_at: "2026-04-11" },
-  { id: 5, name: "购物车结算 E2E 测试", description: "从加入购物车到确认支付完成的完整流程", case_type: "e2e", priority: "P0", status: "active", module: "支付", preconditions: "用户已登录、购物车有商品", test_steps: "1.查看购物车 2.下单 3.支付 4.校验", expected_results: "支付成功", author: "赵六", tags: ["payment", "e2e"], is_automated: true, is_parallel: false, total_runs: 30, passed_runs: 28, failed_runs: 2, pass_rate: 93, avg_duration: 15.2, flaky: true, created_at: "2026-03-01", updated_at: "2026-04-12" },
-  { id: 6, name: "用户权限校验测试", description: "验证不同角色（admin/editor/viewer）的接口权限边界", case_type: "api", priority: "P1", status: "active", module: "权限", preconditions: "多角色账户", test_steps: "1.以各角色登录 2.请求受限接口", expected_results: "权限拦截正确", author: "李四", tags: ["auth", "rbac"], is_automated: false, is_parallel: true, total_runs: 40, passed_runs: 38, failed_runs: 2, pass_rate: 95, avg_duration: 3.5, flaky: false, created_at: "2026-02-10", updated_at: "2026-04-09" },
-]
-
-// ===================== Mock 已有自动化步骤流 =====================
-
-const MOCK_FLOWS: Record<number, { nodes: Node[]; edges: Edge[] }> = {
-  1: {
-    // 用户登录接口测试的自动化步骤
-    nodes: [
-      { id: "s1", type: "httpRequest", position: { x: 0, y: 120 }, data: { label: "登录请求", method: "POST", url: "/api/v1/login", body: '{ "username": "test", "password": "123456" }', status: "success" } },
-      { id: "s2", type: "assertion", position: { x: 320, y: 40 }, data: { label: "校验状态码", assertType: "status_code", expression: "response.status", expected: "200", status: "success" } },
-      { id: "s3", type: "extract", position: { x: 320, y: 200 }, data: { label: "提取 Token", source: "json_path", expression: "$.data.token", varName: "auth_token", status: "success" } },
-      { id: "s4", type: "assertion", position: { x: 620, y: 40 }, data: { label: "校验 Token 非空", assertType: "json_path", expression: "$.data.token", expected: "not_empty", status: "success" } },
-      { id: "s5", type: "httpRequest", position: { x: 620, y: 200 }, data: { label: "获取用户信息", method: "GET", url: "/api/v1/user/profile", status: "success" } },
-      { id: "s6", type: "assertion", position: { x: 920, y: 120 }, data: { label: "校验用户名", assertType: "json_path", expression: "$.data.username", expected: "test", status: "success" } },
-    ],
-    edges: [
-      { id: "e1-2", source: "s1", target: "s2" },
-      { id: "e1-3", source: "s1", target: "s3" },
-      { id: "e2-4", source: "s2", target: "s4" },
-      { id: "e3-5", source: "s3", target: "s5", animated: true, label: "use token" },
-      { id: "e4-6", source: "s4", target: "s6" },
-      { id: "e5-6", source: "s5", target: "s6" },
-    ],
-  },
-  3: {
-    // 注册页面 UI 测试的自动化步骤
-    nodes: [
-      { id: "s1", type: "webUiAction", position: { x: 0, y: 120 }, data: { label: "打开注册页", action: "navigate", url: "https://app.example.com/register" } },
-      { id: "s2", type: "webUiAction", position: { x: 300, y: 40 }, data: { label: "输入用户名", action: "type", selector: "#username", value: "newuser01" } },
-      { id: "s3", type: "webUiAction", position: { x: 300, y: 200 }, data: { label: "输入密码", action: "type", selector: "#password", value: "Abc@123456" } },
-      { id: "s4", type: "webUiAction", position: { x: 580, y: 120 }, data: { label: "点击注册按钮", action: "click", selector: "button[type=submit]" } },
-      { id: "s5", type: "wait", position: { x: 820, y: 120 }, data: { label: "等待跳转", seconds: 2 } },
-      { id: "s6", type: "assertion", position: { x: 1020, y: 120 }, data: { label: "校验跳转成功", assertType: "contains", expression: "window.location", expected: "/dashboard" } },
-    ],
-    edges: [
-      { id: "e1-2", source: "s1", target: "s2" },
-      { id: "e1-3", source: "s1", target: "s3" },
-      { id: "e2-4", source: "s2", target: "s4" },
-      { id: "e3-4", source: "s3", target: "s4" },
-      { id: "e4-5", source: "s4", target: "s5" },
-      { id: "e5-6", source: "s5", target: "s6" },
-    ],
-  },
-  2: {
-    // 创建订单接口测试的自动化步骤
-    nodes: [
-      { id: "s1", type: "httpRequest", position: { x: 0, y: 120 }, data: { label: "用户登录", method: "POST", url: "/api/v1/login", body: '{"username":"buyer","password":"pass"}' } },
-      { id: "s2", type: "extract", position: { x: 300, y: 120 }, data: { label: "提取 Token", source: "json_path", expression: "$.data.token", varName: "token" } },
-      { id: "s3", type: "sqlQuery", position: { x: 580, y: 40 }, data: { label: "查询库存", connection: "prod_db", query: "SELECT stock FROM products WHERE id=1" } },
-      { id: "s4", type: "httpRequest", position: { x: 580, y: 200 }, data: { label: "创建订单", method: "POST", url: "/api/v1/orders", body: '{"product_id":1,"qty":1}' } },
-      { id: "s5", type: "assertion", position: { x: 880, y: 120 }, data: { label: "校验订单创建", assertType: "status_code", expression: "response.status", expected: "201" } },
-      { id: "s6", type: "sqlQuery", position: { x: 880, y: 280 }, data: { label: "校验库存扣减", connection: "prod_db", query: "SELECT stock FROM products WHERE id=1" } },
-    ],
-    edges: [
-      { id: "e1-2", source: "s1", target: "s2" },
-      { id: "e2-3", source: "s2", target: "s3" },
-      { id: "e2-4", source: "s2", target: "s4", animated: true },
-      { id: "e4-5", source: "s4", target: "s5" },
-      { id: "e4-6", source: "s4", target: "s6" },
-    ],
-  },
+/** 执行结果摘要 */
+interface RunResult {
+  total: number
+  passed: number
+  failed: number
 }
 
 // ===================== 步骤面板（左侧拖拽区） =====================
 
-function StepPalette({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+function StepPalette() {
   const [searchTerm, setSearchTerm] = useState("")
   const [expandedCats, setExpandedCats] = useState<string[]>(STEP_CATEGORIES.map((c) => c.id))
 
@@ -174,18 +124,10 @@ function StepPalette({ collapsed, onToggle }: { collapsed: boolean; onToggle: ()
   }
 
   return (
-    <div className={cn(
-      "shrink-0 h-full bg-sidebar border-r border-white/5 transition-all duration-300 flex flex-col z-10",
-      collapsed ? "w-0 overflow-hidden" : "w-[236px]",
-    )}>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-        <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-coral" />
-          <span className="text-sm font-semibold">步骤面板</span>
-        </div>
-        <button onClick={onToggle} className="p-1 rounded-md hover:bg-muted/50 transition-colors">
-          <ChevronLeft className="w-4 h-4" />
-        </button>
+    <div className="shrink-0 w-[236px] rounded-2xl bg-sidebar border border-white/5 flex flex-col z-10 overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
+        <Layers className="w-4 h-4 text-coral" />
+        <span className="text-sm font-semibold">步骤面板</span>
       </div>
 
       <div className="px-3 py-2">
@@ -193,7 +135,7 @@ function StepPalette({ collapsed, onToggle }: { collapsed: boolean; onToggle: ()
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input
             placeholder="搜索步骤..."
-            className="h-8 pl-8 text-xs rounded-lg bg-muted/30 border-white/5"
+            className="h-8 pl-8 text-xs rounded-2xl bg-muted/30 border-white/5"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -211,7 +153,7 @@ function StepPalette({ collapsed, onToggle }: { collapsed: boolean; onToggle: ()
               <div key={cat.id}>
                 <button
                   onClick={() => toggleCat(cat.id)}
-                  className="flex items-center gap-2 w-full px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md"
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-xl"
                 >
                   <ChevronRight className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-90")} />
                   <CatIcon className="w-3.5 h-3.5" />
@@ -227,9 +169,9 @@ function StepPalette({ collapsed, onToggle }: { collapsed: boolean; onToggle: ()
                           key={`${template.type}-${i}`}
                           draggable
                           onDragStart={(e) => onDragStart(e, template)}
-                          className="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-grab active:cursor-grabbing border border-transparent hover:border-white/10 transition-all hover:bg-muted/20 group"
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-xl cursor-grab active:cursor-grabbing border border-transparent hover:border-white/10 transition-all hover:bg-muted/20 group"
                         >
-                          <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 bg-muted/40 border border-white/5">
+                          <div className="w-6 h-6 rounded-xl flex items-center justify-center shrink-0 bg-muted/40 border border-white/5">
                             <Icon className="w-3 h-3 text-muted-foreground" />
                           </div>
                           <div className="min-w-0 flex-1">
@@ -276,7 +218,7 @@ function PropertyPanel({
           <Settings className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-semibold">步骤配置</span>
         </div>
-        <button onClick={onClose} className="p-1 rounded-md hover:bg-muted/50 transition-colors">
+        <button onClick={onClose} className="p-1 rounded-xl hover:bg-muted/50 transition-colors">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -284,7 +226,7 @@ function PropertyPanel({
         <div className="p-4 space-y-4">
           {/* 步骤名称 */}
           <FieldGroup label="步骤名称">
-            <Input value={(d.label as string) || ""} onChange={(e) => setField("label", e.target.value)} className="h-8 text-sm rounded-lg" />
+            <Input value={(d.label as string) || ""} onChange={(e) => setField("label", e.target.value)} className="h-8 text-sm rounded-2xl" />
           </FieldGroup>
 
           {/* ---- HTTP 请求配置 ---- */}
@@ -292,23 +234,23 @@ function PropertyPanel({
             <>
               <FieldGroup label="请求方法">
                 <Select value={(d.method as string) || "GET"} onValueChange={(v) => setField("method", v)}>
-                  <SelectTrigger className="h-8 text-sm rounded-lg"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm rounded-2xl"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {["GET", "POST", "PUT", "DELETE", "PATCH"].map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </FieldGroup>
-              <FieldGroup label="URL">
-                <Input value={(d.url as string) || ""} onChange={(e) => setField("url", e.target.value)} placeholder="/api/v1/users" className="h-8 text-xs font-mono rounded-lg" />
+              <FieldGroup label="URL" description="支持 {{variable}} 变量引用">
+                <Input value={(d.url as string) || ""} onChange={(e) => setField("url", e.target.value)} placeholder="/api/v1/users" className="h-8 text-xs font-mono rounded-2xl" />
               </FieldGroup>
-              <FieldGroup label="Headers (JSON)">
-                <Textarea value={(d.headers as string) || ""} onChange={(e) => setField("headers", e.target.value)} placeholder='{"Authorization":"Bearer {{token}}"}' rows={3} className="text-xs font-mono rounded-lg resize-none" />
+              <FieldGroup label="Headers (JSON)" description="请求头，每行一对 key: value">
+                <Textarea value={(d.headers as string) || ""} onChange={(e) => setField("headers", e.target.value)} placeholder='{"Authorization":"Bearer {{token}}"}' rows={3} className="text-xs font-mono rounded-2xl resize-none" />
               </FieldGroup>
-              <FieldGroup label="Body (JSON)">
-                <Textarea value={(d.body as string) || ""} onChange={(e) => setField("body", e.target.value)} placeholder='{"key":"value"}' rows={4} className="text-xs font-mono rounded-lg resize-none" />
+              <FieldGroup label="Body (JSON)" description="仅 POST/PUT/PATCH 生效">
+                <Textarea value={(d.body as string) || ""} onChange={(e) => setField("body", e.target.value)} placeholder='{"key":"value"}' rows={4} className="text-xs font-mono rounded-2xl resize-none" />
               </FieldGroup>
-              <FieldGroup label="超时 (ms)">
-                <Input type="number" value={(d.timeout as number) || 30000} onChange={(e) => setField("timeout", Number(e.target.value))} className="h-8 text-sm rounded-lg" />
+              <FieldGroup label="超时 (ms)" description="默认 30000ms">
+                <Input type="number" value={(d.timeout as number) || 30000} onChange={(e) => setField("timeout", Number(e.target.value))} className="h-8 text-sm rounded-2xl" />
               </FieldGroup>
             </>
           )}
@@ -318,7 +260,7 @@ function PropertyPanel({
             <>
               <FieldGroup label="操作类型">
                 <Select value={(d.action as string) || "click"} onValueChange={(v) => setField("action", v)}>
-                  <SelectTrigger className="h-8 text-sm rounded-lg"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm rounded-2xl"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="navigate">打开Web页面</SelectItem>
                     <SelectItem value="click">点击Web元素</SelectItem>
@@ -332,17 +274,17 @@ function PropertyPanel({
                 </Select>
               </FieldGroup>
               {(d.action === "navigate") ? (
-                <FieldGroup label="URL">
-                  <Input value={(d.url as string) || ""} onChange={(e) => setField("url", e.target.value)} placeholder="https://example.com" className="h-8 text-xs font-mono rounded-lg" />
+                <FieldGroup label="URL" description="完整 URL，如 https://example.com/login">
+                  <Input value={(d.url as string) || ""} onChange={(e) => setField("url", e.target.value)} placeholder="https://example.com" className="h-8 text-xs font-mono rounded-2xl" />
                 </FieldGroup>
               ) : (
-                <FieldGroup label="元素选择器">
-                  <Input value={(d.selector as string) || ""} onChange={(e) => setField("selector", e.target.value)} placeholder="#submit-btn / .input-name" className="h-8 text-xs font-mono rounded-lg" />
+                <FieldGroup label="元素选择器" description="CSS 选择器，如 #submit-btn 或 .input-name">
+                  <Input value={(d.selector as string) || ""} onChange={(e) => setField("selector", e.target.value)} placeholder="#submit-btn / .input-name" className="h-8 text-xs font-mono rounded-2xl" />
                 </FieldGroup>
               )}
               {["type", "upload"].includes(d.action as string) && (
                 <FieldGroup label={d.action === "upload" ? "文件路径" : "输入值"}>
-                  <Input value={(d.value as string) || ""} onChange={(e) => setField("value", e.target.value)} className="h-8 text-xs rounded-lg" />
+                  <Input value={(d.value as string) || ""} onChange={(e) => setField("value", e.target.value)} className="h-8 text-xs rounded-2xl" />
                 </FieldGroup>
               )}
             </>
@@ -353,7 +295,7 @@ function PropertyPanel({
             <>
               <FieldGroup label="操作类型">
                 <Select value={(d.action as string) || "click"} onValueChange={(v) => setField("action", v)}>
-                  <SelectTrigger className="h-8 text-sm rounded-lg"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm rounded-2xl"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="launch_app">启动 App</SelectItem>
                     <SelectItem value="click">点击App组件</SelectItem>
@@ -366,16 +308,16 @@ function PropertyPanel({
               </FieldGroup>
               {(d.action === "launch_app") ? (
                 <FieldGroup label="App Package ID" description="例如：com.example.app">
-                  <Input value={(d.app_id as string) || ""} onChange={(e) => setField("app_id", e.target.value)} placeholder="com.example.app" className="h-8 text-xs font-mono rounded-lg" />
+                  <Input value={(d.app_id as string) || ""} onChange={(e) => setField("app_id", e.target.value)} placeholder="com.example.app" className="h-8 text-xs font-mono rounded-2xl" />
                 </FieldGroup>
               ) : (
                 <FieldGroup label="组件选择器" description="XPath 或 Resource ID">
-                  <Input value={(d.selector as string) || ""} onChange={(e) => setField("selector", e.target.value)} placeholder="//android.widget.Button[@text='OK']" className="h-8 text-xs font-mono rounded-lg" />
+                  <Input value={(d.selector as string) || ""} onChange={(e) => setField("selector", e.target.value)} placeholder="//android.widget.Button[@text='OK']" className="h-8 text-xs font-mono rounded-2xl" />
                 </FieldGroup>
               )}
               {["type", "swipe"].includes(d.action as string) && (
                 <FieldGroup label={d.action === "swipe" ? "滑动方向(up/down/left/right)" : "输入值"}>
-                  <Input value={(d.value as string) || ""} onChange={(e) => setField("value", e.target.value)} className="h-8 text-xs rounded-lg" />
+                  <Input value={(d.value as string) || ""} onChange={(e) => setField("value", e.target.value)} className="h-8 text-xs rounded-2xl" />
                 </FieldGroup>
               )}
             </>
@@ -384,14 +326,14 @@ function PropertyPanel({
           {/* ---- SQL 配置 ---- */}
           {node.type === "sqlQuery" && (
             <>
-              <FieldGroup label="数据库连接">
-                <Input value={(d.connection as string) || ""} onChange={(e) => setField("connection", e.target.value)} placeholder="prod_db" className="h-8 text-sm rounded-lg" />
+              <FieldGroup label="数据库连接" description="在配置中预设的连接名称">
+                <Input value={(d.connection as string) || ""} onChange={(e) => setField("connection", e.target.value)} placeholder="prod_db" className="h-8 text-sm rounded-2xl" />
               </FieldGroup>
               <FieldGroup label="SQL 语句">
-                <Textarea value={(d.query as string) || ""} onChange={(e) => setField("query", e.target.value)} placeholder="SELECT * FROM users WHERE id = ?" rows={4} className="text-xs font-mono rounded-lg resize-none" />
+                <Textarea value={(d.query as string) || ""} onChange={(e) => setField("query", e.target.value)} placeholder="SELECT * FROM users WHERE id = ?" rows={4} className="text-xs font-mono rounded-2xl resize-none" />
               </FieldGroup>
-              <FieldGroup label="结果存入变量">
-                <Input value={(d.extractVar as string) || ""} onChange={(e) => setField("extractVar", e.target.value)} placeholder="sql_result" className="h-8 text-xs font-mono rounded-lg" />
+              <FieldGroup label="结果存入变量" description="后续步骤通过 {{变量名}} 引用">
+                <Input value={(d.extractVar as string) || ""} onChange={(e) => setField("extractVar", e.target.value)} placeholder="sql_result" className="h-8 text-xs font-mono rounded-2xl" />
               </FieldGroup>
             </>
           )}
@@ -401,7 +343,7 @@ function PropertyPanel({
             <>
               <FieldGroup label="断言类型">
                 <Select value={(d.assertType as string) || "status_code"} onValueChange={(v) => setField("assertType", v)}>
-                  <SelectTrigger className="h-8 text-sm rounded-lg"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm rounded-2xl"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="status_code">状态码</SelectItem>
                     <SelectItem value="json_path">JSON Path</SelectItem>
@@ -412,11 +354,11 @@ function PropertyPanel({
                   </SelectContent>
                 </Select>
               </FieldGroup>
-              <FieldGroup label="表达式">
-                <Input value={(d.expression as string) || ""} onChange={(e) => setField("expression", e.target.value)} placeholder="$.data.token" className="h-8 text-xs font-mono rounded-lg" />
+              <FieldGroup label="表达式" description="如 $.data.token 或 response.status">
+                <Input value={(d.expression as string) || ""} onChange={(e) => setField("expression", e.target.value)} placeholder="$.data.token" className="h-8 text-xs font-mono rounded-2xl" />
               </FieldGroup>
-              <FieldGroup label="期望值">
-                <Input value={(d.expected as string) || ""} onChange={(e) => setField("expected", e.target.value)} placeholder="200" className="h-8 text-xs font-mono rounded-lg" />
+              <FieldGroup label="期望值" description="支持 not_empty / any 等特殊关键字">
+                <Input value={(d.expected as string) || ""} onChange={(e) => setField("expected", e.target.value)} placeholder="200" className="h-8 text-xs font-mono rounded-2xl" />
               </FieldGroup>
             </>
           )}
@@ -426,7 +368,7 @@ function PropertyPanel({
             <>
               <FieldGroup label="提取方式">
                 <Select value={(d.source as string) || "json_path"} onValueChange={(v) => setField("source", v)}>
-                  <SelectTrigger className="h-8 text-sm rounded-lg"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm rounded-2xl"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="json_path">JSONPath</SelectItem>
                     <SelectItem value="regex">正则匹配</SelectItem>
@@ -436,11 +378,11 @@ function PropertyPanel({
                   </SelectContent>
                 </Select>
               </FieldGroup>
-              <FieldGroup label="表达式">
-                <Input value={(d.expression as string) || ""} onChange={(e) => setField("expression", e.target.value)} placeholder="$.data.token" className="h-8 text-xs font-mono rounded-lg" />
+              <FieldGroup label="表达式" description="如 $.data.token 或正则表达式">
+                <Input value={(d.expression as string) || ""} onChange={(e) => setField("expression", e.target.value)} placeholder="$.data.token" className="h-8 text-xs font-mono rounded-2xl" />
               </FieldGroup>
-              <FieldGroup label="变量名">
-                <Input value={(d.varName as string) || ""} onChange={(e) => setField("varName", e.target.value)} placeholder="auth_token" className="h-8 text-xs font-mono rounded-lg" />
+              <FieldGroup label="变量名" description="后续步骤通过 {{变量名}} 引用">
+                <Input value={(d.varName as string) || ""} onChange={(e) => setField("varName", e.target.value)} placeholder="auth_token" className="h-8 text-xs font-mono rounded-2xl" />
               </FieldGroup>
             </>
           )}
@@ -450,7 +392,7 @@ function PropertyPanel({
             <>
               <FieldGroup label="脚本语言">
                 <Select value={(d.language as string) || "python"} onValueChange={(v) => setField("language", v)}>
-                  <SelectTrigger className="h-8 text-sm rounded-lg"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm rounded-2xl"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="python">Python</SelectItem>
                     <SelectItem value="javascript">JavaScript</SelectItem>
@@ -458,29 +400,29 @@ function PropertyPanel({
                   </SelectContent>
                 </Select>
               </FieldGroup>
-              <FieldGroup label="代码">
-                <Textarea value={(d.code as string) || ""} onChange={(e) => setField("code", e.target.value)} placeholder="# your code here" rows={8} className="text-xs font-mono rounded-lg resize-none" />
+              <FieldGroup label="代码" description="可通过 env.get('变量名') 读取上下文变量">
+                <Textarea value={(d.code as string) || ""} onChange={(e) => setField("code", e.target.value)} placeholder="# your code here" rows={8} className="text-xs font-mono rounded-2xl resize-none" />
               </FieldGroup>
             </>
           )}
 
           {/* ---- 等待配置 ---- */}
           {node.type === "wait" && (
-            <FieldGroup label="等待秒数">
-              <Input type="number" value={(d.seconds as number) || 2} onChange={(e) => setField("seconds", Number(e.target.value))} className="h-8 text-sm rounded-lg" />
+            <FieldGroup label="等待秒数" description="执行下一步前的等待时间">
+              <Input type="number" value={(d.seconds as number) || 2} onChange={(e) => setField("seconds", Number(e.target.value))} className="h-8 text-sm rounded-2xl" />
             </FieldGroup>
           )}
 
           {/* ---- 条件配置 ---- */}
           {node.type === "condition" && (
-            <FieldGroup label="条件表达式">
-              <Textarea value={(d.expression as string) || ""} onChange={(e) => setField("expression", e.target.value)} placeholder="response.status === 200" rows={3} className="text-xs font-mono rounded-lg resize-none" />
+            <FieldGroup label="条件表达式" description="满足条件走 True 分支，否则走 False 分支">
+              <Textarea value={(d.expression as string) || ""} onChange={(e) => setField("expression", e.target.value)} placeholder="response.status === 200" rows={3} className="text-xs font-mono rounded-2xl resize-none" />
             </FieldGroup>
           )}
 
           {/* 删除 */}
           <div className="pt-3 border-t border-white/5">
-            <Button variant="destructive" size="sm" className="w-full rounded-xl h-8" onClick={() => onDelete(node.id)}>
+            <Button variant="destructive" size="sm" className="w-full rounded-2xl h-8" onClick={() => onDelete(node.id)}>
               <Trash2 className="w-3.5 h-3.5 mr-2" />删除步骤
             </Button>
           </div>
@@ -490,23 +432,17 @@ function PropertyPanel({
   )
 }
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldGroup({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
+      {description && <p className="text-[10px] text-muted-foreground/50 leading-relaxed">{description}</p>}
       {children}
     </div>
   )
 }
 
 // ===================== 测试用例选择器 (Dialog) =====================
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 
 function TestCasePickerDialog({
   open,
@@ -518,15 +454,21 @@ function TestCasePickerDialog({
   onSelect: (tc: TestCase) => void
 }) {
   const [cases, setCases] = useState<TestCase[]>([])
+  const [workflowedIds, setWorkflowedIds] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState("")
 
   useEffect(() => {
     if (!open) return
     setLoading(true)
-    fetchTestCases({ limit: 100 })
-      .then(setCases)
-      .catch(() => setCases(MOCK_TEST_CASES))
+    Promise.all([
+      fetchTestCases({ limit: 100 }),
+      fetchWorkflowedCaseIds(),
+    ])
+      .then(([tcList, ids]) => {
+        setCases(tcList)
+        setWorkflowedIds(new Set(ids))
+      })
       .finally(() => setLoading(false))
   }, [open])
 
@@ -555,7 +497,7 @@ function TestCasePickerDialog({
         <div className="flex items-center gap-3 mb-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="搜索用例名称..." className="pl-9 h-9 rounded-xl" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input placeholder="搜索用例名称..." className="pl-9 h-9 rounded-2xl" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
         <ScrollArea className="max-h-[400px]">
@@ -573,13 +515,13 @@ function TestCasePickerDialog({
                 <div
                   key={tc.id}
                   onClick={() => { onSelect(tc); onOpenChange(false) }}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-sidebar hover:bg-muted/30 cursor-pointer transition-colors group"
+                  className="flex items-center gap-3 p-3 rounded-2xl border border-white/5 bg-sidebar hover:bg-muted/30 cursor-pointer transition-colors group"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <p className="text-sm font-medium truncate group-hover:text-coral transition-colors">{tc.name}</p>
                       <Badge className={cn("text-[10px] px-1.5 py-0 rounded-full shrink-0", PRIORITY_COLORS[tc.priority])}>{tc.priority}</Badge>
-                      {MOCK_FLOWS[tc.id] && (
+                      {workflowedIds.has(tc.id) && (
                         <Badge className="text-[10px] px-1.5 py-0 rounded-full bg-green-500/10 text-green-400 border-green-500/20">
                           <CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />已编排
                         </Badge>
@@ -597,6 +539,129 @@ function TestCasePickerDialog({
   )
 }
 
+// ===================== 执行日志面板 =====================
+
+function LogPanel({
+  logs,
+  isRunning,
+  collapsed,
+  onToggle,
+}: {
+  logs: LogEntry[]
+  isRunning: boolean
+  collapsed: boolean
+  onToggle: () => void
+}) {
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  // 新日志自动滚动到底部
+  useEffect(() => {
+    if (!collapsed) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [logs, collapsed])
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* 日志面板标题栏 */}
+      <button
+        onClick={onToggle}
+        className="flex items-center gap-2 w-full px-4 h-9 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border-b border-white/5"
+      >
+        <Terminal className="w-3.5 h-3.5 text-coral" />
+        <span>执行日志</span>
+        {logs.length > 0 && (
+          <Badge variant="secondary" className="ml-1 text-[9px] px-1.5 py-0 h-4 bg-muted/50">{logs.length}</Badge>
+        )}
+        {isRunning && (
+          <span className="flex items-center gap-1 ml-2 text-blue-400">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            执行中...
+          </span>
+        )}
+        <span className="ml-auto">
+          {collapsed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </span>
+      </button>
+
+      {/* 日志内容 */}
+      {!collapsed && (
+        <div className="h-[calc(100%-36px)] overflow-y-auto px-4 py-2 font-mono text-[11px] space-y-1">
+          {logs.length === 0 ? (
+            <p className="text-muted-foreground/40 py-6 text-center">点击「执行」开始运行流程，日志将在此显示</p>
+          ) : (
+            logs.map((log, i) => (
+              <div key={i} className="flex items-center gap-2 py-0.5">
+                <span className="text-muted-foreground/30 shrink-0 w-14">{log.timestamp}</span>
+                {log.status === "running" && <Loader2 className="w-3 h-3 text-blue-400 animate-spin shrink-0" />}
+                {log.status === "success" && <CheckCircle2 className="w-3 h-3 text-green-400 shrink-0" />}
+                {log.status === "error" && <XCircle className="w-3 h-3 text-red-400 shrink-0" />}
+                <span className={cn(
+                  "truncate",
+                  log.status === "running" && "text-blue-400",
+                  log.status === "success" && "text-green-400",
+                  log.status === "error" && "text-red-400",
+                )}>
+                  {log.label}
+                </span>
+                {log.duration !== undefined && (
+                  <span className="text-muted-foreground/40 shrink-0 ml-auto">{log.duration}ms</span>
+                )}
+                {log.message && (
+                  <span className="text-muted-foreground/50 shrink-0 truncate max-w-[200px]">{log.message}</span>
+                )}
+              </div>
+            ))
+          )}
+          <div ref={bottomRef} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ===================== 执行结果 Toast =====================
+
+function RunResultToast({
+  result,
+  onClose,
+}: {
+  result: RunResult | null
+  onClose: () => void
+}) {
+  useEffect(() => {
+    if (!result) return
+    const t = setTimeout(onClose, 4000)
+    return () => clearTimeout(t)
+  }, [result, onClose])
+
+  if (!result) return null
+  const allPassed = result.failed === 0
+
+  return (
+    <div className={cn(
+      "fixed bottom-8 right-8 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl border shadow-xl backdrop-blur-md transition-all animate-in slide-in-from-bottom-4 duration-300",
+      allPassed
+        ? "bg-green-500/10 border-green-500/20 text-green-400"
+        : "bg-red-500/10 border-red-500/20 text-red-400",
+    )}>
+      {allPassed
+        ? <CheckCircle2 className="w-5 h-5 shrink-0" />
+        : <XCircle className="w-5 h-5 shrink-0" />}
+      <div>
+        <p className="text-sm font-semibold">{allPassed ? "全部通过" : "存在失败步骤"}</p>
+        <p className="text-[11px] opacity-70">
+          {result.passed}/{result.total} 步骤通过
+          {result.failed > 0 && `，${result.failed} 个失败`}
+        </p>
+      </div>
+      <button onClick={onClose} className="ml-2 p-1 rounded-full hover:bg-white/10 transition-colors">
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  )
+}
+
 // ===================== 主组件: 自动化步骤流画布 =====================
 
 const TYPE_META: Record<string, { icon: LucideIcon; label: string; color: string }> = {
@@ -610,31 +675,41 @@ const TYPE_META: Record<string, { icon: LucideIcon; label: string; color: string
 export function WorkflowEditor() {
   const [testCase, setTestCase] = useState<TestCase | null>(null)
   const [tcPickerOpen, setTcPickerOpen] = useState(false)
+  const [clearDialogOpen, setClearDialogOpen] = useState(false)
 
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
 
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
-  const [panelCollapsed, setPanelCollapsed] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
-  const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null)
+  const [rfInstance, setRfInstance] = useState<ReactFlowInstance<Node, Edge> | null>(null)
 
-  // 当选择新的用例时，加载其流
+  // 执行日志 & 结果
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [logCollapsed, setLogCollapsed] = useState(true)
+  const [runResult, setRunResult] = useState<RunResult | null>(null)
+
+  // 当选择新的用例时，加载其流，重置日志
   useEffect(() => {
-    if (testCase && MOCK_FLOWS[testCase.id]) {
-      setNodes(MOCK_FLOWS[testCase.id].nodes)
-      setEdges(
-        MOCK_FLOWS[testCase.id].edges.map((e) => ({
-          ...e,
-          type: "smoothstep",
-          markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
-        }))
-      )
-    } else {
-      setNodes([])
-      setEdges([])
-    }
+    setNodes([])
+    setEdges([])
+    setLogs([])
+    setRunResult(null)
+    if (!testCase) return
+    fetchFlow(testCase.id)
+      .then((flow) => {
+        if (!flow) return
+        setNodes(flow.nodes as Node[])
+        setEdges(
+          (flow.edges as Edge[]).map((e) => ({
+            ...e,
+            type: "smoothstep",
+            markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
+          }))
+        )
+      })
+      .catch(console.error)
   }, [testCase, setNodes, setEdges])
 
   // 连接
@@ -693,139 +768,270 @@ export function WorkflowEditor() {
     [setNodes, setEdges],
   )
 
-  // 模拟保存
-  const handleSave = useCallback(() => {
-    setIsSaving(true)
-    setTimeout(() => setIsSaving(false), 800)
-  }, [])
+  // 清空画布
+  const handleClear = useCallback(() => {
+    setNodes([])
+    setEdges([])
+    setSelectedNode(null)
+    setLogs([])
+    setRunResult(null)
+  }, [setNodes, setEdges])
 
-  // 模拟运行步骤
+  // 保存工作流
+  const handleSave = useCallback(async () => {
+    if (!testCase) return
+    setIsSaving(true)
+    try {
+      await saveFlow(testCase.id, { nodes, edges })
+    } catch (err) {
+      console.error("保存失败", err)
+    } finally {
+      setIsSaving(false)
+    }
+  }, [testCase, nodes, edges])
+
+  // 模拟运行步骤（带日志收集）
   const handleRun = useCallback(() => {
+    if (nodes.length === 0) return
     setIsRunning(true)
+    setLogs([])
+    setLogCollapsed(false)
+    setRunResult(null)
+
     const ids = nodes.map((n) => n.id)
+    const nodeMap = Object.fromEntries(nodes.map((n) => [n.id, n]))
     let i = 0
+    let passedCount = 0
+    let failedCount = 0
+
+    const fmt = () => {
+      const d = new Date()
+      return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`
+    }
+
     const iv = setInterval(() => {
-      if (i >= ids.length) { clearInterval(iv); setIsRunning(false); return }
+      if (i >= ids.length) {
+        clearInterval(iv)
+        setIsRunning(false)
+        setRunResult({ total: ids.length, passed: passedCount, failed: failedCount })
+        return
+      }
       const nid = ids[i]
+      const nodeLabel = (nodeMap[nid]?.data?.label as string) || nid
+      const ts = fmt()
+
+      // 更新节点为 running
       setNodes((nds) => nds.map((n) => n.id === nid ? { ...n, data: { ...n.data, status: "running" } } : n))
+      setLogs((prev) => [...prev, { nodeId: nid, label: nodeLabel, status: "running", timestamp: ts }])
+
       setTimeout(() => {
-        setNodes((nds) => nds.map((n) => n.id === nid ? { ...n, data: { ...n.data, status: Math.random() > 0.12 ? "success" : "error" } } : n))
+        const success = Math.random() > 0.12
+        const duration = Math.floor(Math.random() * 400) + 50
+        if (success) passedCount++ ; else failedCount++
+
+        setNodes((nds) => nds.map((n) => n.id === nid ? { ...n, data: { ...n.data, status: success ? "success" : "error" } } : n))
+        setLogs((prev) => prev.map((l) =>
+          l.nodeId === nid && l.status === "running"
+            ? { ...l, status: success ? "success" : "error", duration, message: success ? "OK" : "AssertionError: expected 200 but got 500" }
+            : l
+        ))
       }, 500)
+
       i++
     }, 800)
   }, [nodes, setNodes])
 
   const tm = testCase ? (TYPE_META[testCase.case_type] || TYPE_META.api) : null
 
+  // 统计执行结果（用于 toolbar badge）
+  const lastRunResult = runResult
+
   return (
-    <div className="flex flex-col h-[calc(100vh-72px)] pt-14">
-      {/* 顶部工具栏 */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-sidebar/80 backdrop-blur-sm shrink-0">
-        <div className="flex items-center gap-3">
-          {panelCollapsed && (
-            <button onClick={() => setPanelCollapsed(false)} className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors">
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          )}
-
-          {/* 测试用例信息 或 提示绑定 */}
-          {testCase && tm ? (
-            <div className="flex items-center gap-2 cursor-pointer hover:bg-white/5 p-1.5 pr-3 rounded-lg transition-colors border border-transparent hover:border-white/10" onClick={() => setTcPickerOpen(true)}>
-              <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center border shrink-0", tm.color.replace("text-", "bg-").split(" ")[0], tm.color.split(" ").slice(2).join(" "))}>
-                <tm.icon className={cn("w-3.5 h-3.5", tm.color.split(" ")[1])} />
-              </div>
-              <div>
-                <span className="text-sm font-semibold">{testCase.name}</span>
-                <div className="flex items-center gap-1.5 -mt-0.5">
-                  <span className="text-[10px] text-muted-foreground">{testCase.module}</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <Button variant="outline" size="sm" className="rounded-xl h-9 border-dashed border-white/20 bg-transparent hover:bg-white/5" onClick={() => setTcPickerOpen(true)}>
-              <FlaskConical className="w-4 h-4 mr-2 text-coral" />
-              选择测试用例
-            </Button>
-          )}
-
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="text-xs text-muted-foreground mr-2">
-            {nodes.length} 步骤 · {edges.length} 连接
-          </div>
-          <Button variant="ghost" size="sm" className="rounded-xl h-8" onClick={handleSave} disabled={isSaving || !testCase}>
-            {isSaving ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
-            保存
-          </Button>
-          <Button size="sm" className="rounded-xl h-8 bg-coral hover:bg-coral/90" onClick={handleRun} disabled={isRunning || !testCase || nodes.length === 0}>
-            {isRunning ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Play className="w-3.5 h-3.5 mr-1.5" />}
-            {isRunning ? "执行中..." : "执行"}
-          </Button>
-        </div>
-      </div>
-
+    <div className="flex h-full">
       {/* 主区域 */}
       <div className="flex flex-1 overflow-hidden">
-        <StepPalette collapsed={panelCollapsed} onToggle={() => setPanelCollapsed(true)} />
+        <StepPalette />
 
-        {/* React Flow 画布 */}
+        {/* React Flow 画布 + 悬浮日志面板 */}
         <div className="flex-1 relative">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onReconnect={onReconnect}
-            onInit={setRfInstance}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-            onNodeClick={onNodeClick}
-            onPaneClick={onPaneClick}
-            nodeTypes={nodeTypes}
-            connectionLineType={ConnectionLineType.SmoothStep}
-            defaultEdgeOptions={{
-              type: "smoothstep",
-              markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
-            }}
-            fitView
-            fitViewOptions={{ padding: 0.3 }}
-            snapToGrid
-            snapGrid={[16, 16]}
-            deleteKeyCode={["Backspace", "Delete"]}
-            className="workflow-canvas"
-          >
-            <Background gap={16} size={1} className="!bg-background" />
-            <Controls className="!rounded-xl !border-white/10 !bg-sidebar/90 !backdrop-blur-sm !shadow-lg" />
-            <MiniMap
-              className="!rounded-xl !border-white/10 !bg-sidebar/90 !backdrop-blur-sm"
-              nodeColor={(node) => {
-                const cm: Record<string, string> = {
-                  httpRequest: "#3b82f6", webUiAction: "#f97316", appUiAction: "#a855f7", sqlQuery: "#10b981",
-                  assertion: "#8b5cf6", extract: "#06b6d4", script: "#f59e0b",
-                  wait: "#64748b", condition: "#ec4899",
-                }
-                return cm[node.type || ""] || "#6b7280"
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onReconnect={onReconnect}
+              onInit={(instance) => setRfInstance(instance as ReactFlowInstance<Node, Edge>)}
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              onNodeClick={onNodeClick}
+              onPaneClick={onPaneClick}
+              nodeTypes={nodeTypes}
+              connectionLineType={ConnectionLineType.SmoothStep}
+              defaultEdgeOptions={{
+                type: "smoothstep",
+                markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
               }}
-              maskColor="rgba(0,0,0,0.08)"
-            />
-            {/* 空画布占位 */}
-            {nodes.length === 0 && (
-              <Panel position="top-center">
-                <div className="text-center mt-40 pointer-events-none select-none">
-                  <div className="w-16 h-16 rounded-2xl bg-muted/20 flex items-center justify-center mx-auto mb-4">
-                    <Workflow className="w-8 h-8 text-muted-foreground/20" />
+              fitView
+              fitViewOptions={{ padding: 0.3 }}
+              snapToGrid
+              snapGrid={[16, 16]}
+              deleteKeyCode={["Backspace", "Delete"]}
+              className="workflow-canvas"
+            >
+              <Background gap={16} size={1} className="!bg-background" />
+
+              {/* 悬浮顶部工具栏 */}
+              <Panel position="top-center" className="pointer-events-auto">
+                <div className="flex items-center gap-2">
+                  {/* 左胶囊：测试用例选择 */}
+                  <div className="flex items-center gap-1 bg-sidebar/90 backdrop-blur-md border border-border/60 shadow-xl rounded-full px-1.5 py-1 h-9">
+                    {testCase && tm ? (
+                      <button
+                        className="flex items-center gap-1.5 cursor-pointer hover:bg-muted/60 px-2 py-1 rounded-full transition-colors"
+                        onClick={() => setTcPickerOpen(true)}
+                      >
+                        <div className={cn("w-5 h-5 rounded-full flex items-center justify-center shrink-0", tm.color.replace("text-", "bg-").split(" ")[0], tm.color.split(" ").slice(2).join(" "))}>
+                          <tm.icon className={cn("w-2.5 h-2.5", tm.color.split(" ")[1])} />
+                        </div>
+                        <span className="text-xs font-medium max-w-[120px] truncate">{testCase.name}</span>
+                        <span className="text-[10px] text-muted-foreground hidden sm:block">{testCase.module}</span>
+                      </button>
+                    ) : (
+                      <button
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-muted/60 transition-colors text-xs text-muted-foreground border border-dashed border-border/60"
+                        onClick={() => setTcPickerOpen(true)}
+                      >
+                        <FlaskConical className="w-3.5 h-3.5 text-coral" />
+                        选择测试用例
+                      </button>
+                    )}
+                    {/* 执行结果 Badge */}
+                    {lastRunResult && (
+                      <div className={cn(
+                        "flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ml-0.5",
+                        lastRunResult.failed === 0
+                          ? "bg-green-500/10 text-green-500 border-green-500/20"
+                          : "bg-red-500/10 text-red-400 border-red-500/20"
+                      )}>
+                        {lastRunResult.failed === 0
+                          ? <><CheckCircle2 className="w-2.5 h-2.5" />{lastRunResult.passed}/{lastRunResult.total}</>
+                          : <><XCircle className="w-2.5 h-2.5" />{lastRunResult.failed} 失败</>}
+                      </div>
+                    )}
                   </div>
-                  {testCase ? (
-                    <p className="text-sm text-muted-foreground/40 mb-1">从左侧面板拖拽步骤到画布</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground/40 mb-1">请先在控制栏选择测试用例</p>
-                  )}
+
+                  {/* 中胶囊：步骤 & 连接统计 */}
+                  <div className="flex items-center gap-3 bg-sidebar/90 backdrop-blur-md border border-border/60 shadow-xl rounded-full px-3 h-9 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Layers className="w-3 h-3" />
+                      {nodes.length}
+                    </span>
+                    <span className="w-px h-3 bg-border/60" />
+                    <span className="flex items-center gap-1">
+                      <Workflow className="w-3 h-3" />
+                      {edges.length}
+                    </span>
+                  </div>
+
+                  {/* 右胶囊：操作按钮 */}
+                  <div className="flex items-center gap-0.5 bg-sidebar/90 backdrop-blur-md border border-border/60 shadow-xl rounded-full px-1.5 py-1 h-9">
+                    {nodes.length > 0 && (
+                      <button
+                        className="p-1.5 rounded-full hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
+                        onClick={() => setClearDialogOpen(true)}
+                        disabled={isRunning}
+                        title="清空画布"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-muted/60 transition-colors text-xs disabled:opacity-40"
+                      onClick={handleSave}
+                      disabled={isSaving || !testCase}
+                      title="保存"
+                    >
+                      {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      <span className="hidden sm:block">保存</span>
+                    </button>
+                    <button
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-coral hover:bg-coral/90 text-white text-xs font-medium transition-colors disabled:opacity-40 shadow-sm shadow-coral/30"
+                      onClick={handleRun}
+                      disabled={isRunning || !testCase || nodes.length === 0}
+                    >
+                      {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+                      {isRunning ? "执行中" : "执行"}
+                    </button>
+                  </div>
                 </div>
               </Panel>
-            )}
-          </ReactFlow>
-        </div>
+
+              <Controls className="!rounded-2xl !border-white/10 !bg-sidebar/90 !backdrop-blur-sm !shadow-lg" />
+              <MiniMap
+                className="!rounded-2xl !border-white/10 !bg-sidebar/90 !backdrop-blur-sm"
+                nodeColor={(node) => {
+                  const cm: Record<string, string> = {
+                    httpRequest: "#3b82f6", webUiAction: "#f97316", appUiAction: "#a855f7", sqlQuery: "#10b981",
+                    assertion: "#8b5cf6", extract: "#06b6d4", script: "#f59e0b",
+                    wait: "#64748b", condition: "#ec4899",
+                  }
+                  return cm[node.type || ""] || "#6b7280"
+                }}
+                maskColor="rgba(0,0,0,0.08)"
+              />
+
+              {/* 空画布占位 */}
+              {nodes.length === 0 && (
+                <Panel position="top-center">
+                  {!testCase ? (
+                    /* 未选用例：大按钮 CTA */
+                    <div className="flex flex-col items-center mt-20 pointer-events-auto select-none gap-5">
+                      <div className="w-20 h-20 rounded-3xl bg-muted/20 border border-white/5 flex items-center justify-center">
+                        <Workflow className="w-9 h-9 text-muted-foreground/20" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-muted-foreground/60 mb-1">选择一个测试用例开始编排自动化流程</p>
+                        <p className="text-[11px] text-muted-foreground/30">从左侧面板拖拽步骤，连接节点构建执行流</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="rounded-2xl h-9 bg-coral hover:bg-coral/90 shadow-lg shadow-coral/20"
+                        onClick={() => setTcPickerOpen(true)}
+                      >
+                        <FlaskConical className="w-4 h-4 mr-2" />
+                        选择测试用例
+                      </Button>
+                    </div>
+                  ) : (
+                    /* 已选用例但无步骤：拖拽引导 */
+                    <div className="flex flex-col items-center mt-20 pointer-events-none select-none gap-4">
+                      <div className="w-16 h-16 rounded-2xl bg-muted/20 border border-dashed border-white/10 flex items-center justify-center animate-pulse">
+                        <Layers className="w-7 h-7 text-coral/30" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground/50 mb-1">从左侧面板拖拽步骤到画布</p>
+                        <p className="text-[11px] text-muted-foreground/30">支持 HTTP 请求、UI 操作、断言、变量提取等步骤类型</p>
+                      </div>
+                    </div>
+                  )}
+                </Panel>
+              )}
+            </ReactFlow>
+
+            {/* 悬浮日志面板 */}
+            <div className={cn(
+              "absolute bottom-3 left-3 right-3 z-10 rounded-2xl border border-white/5 bg-sidebar/95 backdrop-blur-md shadow-xl transition-all duration-300 overflow-hidden",
+              logCollapsed ? "h-9" : "h-52",
+            )}>
+              <LogPanel
+                logs={logs}
+                isRunning={isRunning}
+                collapsed={logCollapsed}
+                onToggle={() => setLogCollapsed((v) => !v)}
+              />
+            </div>
+          </div>
 
         {/* 属性面板 */}
         {selectedNode && (
@@ -838,11 +1044,36 @@ export function WorkflowEditor() {
         )}
       </div>
 
+      {/* 执行完成 Toast */}
+      <RunResultToast result={runResult} onClose={() => setRunResult(null)} />
+
+      {/* 选择测试用例 Dialog */}
       <TestCasePickerDialog
         open={tcPickerOpen}
         onOpenChange={setTcPickerOpen}
         onSelect={setTestCase}
       />
+
+      {/* 清空画布二次确认 */}
+      <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>清空画布</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作将删除画布上的全部步骤和连接，无法撤销。确定继续吗？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600"
+              onClick={() => { handleClear(); setClearDialogOpen(false) }}
+            >
+              清空
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

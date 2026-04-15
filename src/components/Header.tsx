@@ -76,7 +76,7 @@ export function Header({
     <TooltipProvider delayDuration={200}>
       <header
         className={cn(
-          "fixed top-0 left-20 right-0 z-40 flex items-center justify-between gap-4 px-6 py-4 bg-background/80 backdrop-blur-md",
+          "sticky top-0 z-40 shrink-0 flex items-center justify-between gap-4 px-6 py-4 bg-background/80 backdrop-blur-md",
           className,
         )}
       >

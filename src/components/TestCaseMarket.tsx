@@ -110,7 +110,6 @@ const emptyTestCase: TestCaseFormData = {
   expected_results: "",
   author: "测试工程师",
   tags: [],
-  is_automated: false,
   is_parallel: true,
 }
 
@@ -197,7 +196,7 @@ function DirectorySidebar({
   }
 
   return (
-    <div className="w-56 shrink-0 h-[calc(100vh-7.5rem)] sticky top-21 overflow-hidden">
+    <div className="w-56 shrink-0 sticky top-0 self-start overflow-hidden">
       <div className="bg-sidebar rounded-2xl border border-white/5 p-3 h-full flex flex-col">
         <div className="flex items-center justify-between mb-3 px-2">
           <div className="flex items-center gap-2">
@@ -986,17 +985,6 @@ function TestCaseFormDialog({
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
-                    checked={formData.is_automated || false}
-                    onChange={(e) =>
-                      setFormData({ ...formData, is_automated: e.target.checked })
-                    }
-                    className="rounded border-input"
-                  />
-                  可自动化
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
                     checked={formData.is_parallel !== false}
                     onChange={(e) =>
                       setFormData({ ...formData, is_parallel: e.target.checked })
@@ -1226,7 +1214,7 @@ export function TestCaseMarket() {
   }
 
   return (
-    <div className="flex gap-4 pt-14">
+    <div className="flex gap-4">
       <DirectorySidebar
         directories={directories}
         activeId={activeDirectoryId}

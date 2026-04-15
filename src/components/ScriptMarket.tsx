@@ -902,7 +902,7 @@ export function ScriptMarket() {
   };
 
   return (
-    <div className="space-y-6 pt-14">
+    <div className="space-y-6">
       {/* 精选脚本 - 固定显示 */}
       <FeaturedScriptsCard />
 

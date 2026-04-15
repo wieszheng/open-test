@@ -165,7 +165,7 @@
 }
 
 .workflow-canvas .react-flow__controls {
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
 }
@@ -181,7 +181,7 @@
 }
 
 .workflow-canvas .react-flow__minimap {
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: var(--sidebar) !important;
 }
