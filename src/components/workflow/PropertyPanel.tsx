@@ -52,7 +52,7 @@ export function PropertyPanel({
   const setField = (key: string, value: unknown) => onUpdate(node.id, { ...d, [key]: value })
 
   return (
-    <div className="w-72 shrink-0 h-full bg-sidebar border-l border-white/5 flex flex-col z-10 overflow-hidden">
+    <div className="w-72 shrink-0 h-full rounded-2xl bg-sidebar border-l border-white/5 flex flex-col z-10 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 shrink-0">
         <div className="flex items-center gap-2">
           <Settings className="w-4 h-4 text-muted-foreground" />
@@ -274,7 +274,7 @@ export function PropertyPanel({
             return (
               <div className="pt-3 border-t border-white/5 space-y-1.5">
                 <p className="text-xs font-medium text-muted-foreground">执行日志</p>
-                <div className="h-36 overflow-y-auto rounded-xl bg-muted/40 border border-border/40 p-2.5 space-y-0.5 font-mono text-[11px] leading-5">
+                <div className="h-60 overflow-y-auto rounded-xl bg-muted/40 border border-border/40 p-2.5 space-y-0.5 font-mono text-[11px] leading-5">
                   {nodeLogs.map((log, i) => {
                     const prefix = log.status === "running" ? "·" : log.status === "success" ? "✓" : "✗"
                     const dur = log.duration !== undefined ? ` (${log.duration}ms)` : ""

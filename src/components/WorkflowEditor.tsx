@@ -298,7 +298,7 @@ export function WorkflowEditor() {
               <Panel position="top-center" className="pointer-events-auto">
                 <div className="flex items-center gap-2">
                   {/* 左胶囊：测试用例选择 + 执行结果 */}
-                  <div className="flex items-center gap-1 bg-sidebar/90 backdrop-blur-md border border-border/60 shadow-xl rounded-full px-1.5 py-1 h-9">
+                  <div className="flex items-center gap-1 bg-sidebar/90 backdrop-blur-md border border-border/60 shadow-sm rounded-full px-1.5 py-1 h-9">
                     {testCase && tm ? (
                       <button
                         className="flex items-center gap-1.5 cursor-pointer hover:bg-muted/60 px-2 py-1 rounded-full transition-colors"
@@ -334,7 +334,7 @@ export function WorkflowEditor() {
                   </div>
 
                   {/* 中胶囊：步骤 & 连接统计 */}
-                  <div className="flex items-center gap-3 bg-sidebar/90 backdrop-blur-md border border-border/60 shadow-xl rounded-full px-3 h-9 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-3 bg-sidebar/90 backdrop-blur-md border border-border/60 shadow-sm rounded-full px-3 h-9 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Layers className="w-3 h-3" />
                       {nodes.length}
@@ -347,7 +347,7 @@ export function WorkflowEditor() {
                   </div>
 
                   {/* 右胶囊：操作按钮 */}
-                  <div className="flex items-center gap-0.5 bg-sidebar/90 backdrop-blur-md border border-border/60 shadow-xl rounded-full px-1.5 py-1 h-9">
+                  <div className="flex items-center gap-0.5 bg-sidebar/90 backdrop-blur-md border border-border/60 shadow-sm rounded-full px-1.5 py-1 h-9">
                     {nodes.length > 0 && (
                       <button
                         className="p-1.5 rounded-full hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
@@ -379,7 +379,7 @@ export function WorkflowEditor() {
                 </div>
               </Panel>
 
-              <Controls className="!rounded-2xl !border-white/10 !bg-sidebar/90 !backdrop-blur-sm !shadow-lg" />
+              <Controls className="!rounded-2xl !border-white/10 !bg-sidebar/90 !backdrop-blur-sm !shadow-sm" />
               <MiniMap
                 className="!rounded-2xl !border-white/10 !bg-sidebar/90 !backdrop-blur-sm"
                 nodeColor={(node) => {
@@ -397,7 +397,7 @@ export function WorkflowEditor() {
               {nodes.length === 0 && (
                 <Panel position="top-center">
                   {!testCase ? (
-                    <div className="flex flex-col items-center mt-20 pointer-events-auto select-none gap-5">
+                    <div className="flex flex-col items-center mt-25 pointer-events-auto select-none gap-5">
                       <div className="w-20 h-20 rounded-3xl bg-muted/20 border border-white/5 flex items-center justify-center">
                         <Workflow className="w-9 h-9 text-muted-foreground/20" />
                       </div>

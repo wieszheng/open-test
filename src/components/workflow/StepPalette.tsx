@@ -26,7 +26,7 @@ export function StepPalette() {
   }
 
   return (
-    <div className="shrink-0 w-[236px] rounded-2xl bg-sidebar border border-white/5 flex flex-col z-10 overflow-hidden">
+    <div className="w-61 rounded-2xl bg-sidebar border border-white/5 flex flex-col z-10 overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
         <Layers className="w-4 h-4 text-coral" />
         <span className="text-sm font-semibold">步骤面板</span>
@@ -37,7 +37,7 @@ export function StepPalette() {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input
             placeholder="搜索步骤..."
-            className="h-8 pl-8 text-xs rounded-2xl bg-muted/30 border-white/5"
+            className="h-8 pl-8 rounded-2xl bg-muted/30 border-white/5"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -57,10 +57,10 @@ export function StepPalette() {
                   onClick={() => toggleCat(cat.id)}
                   className="flex items-center gap-2 w-full px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-xl"
                 >
-                  <ChevronRight className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-90")} />
+                  <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", isExpanded && "rotate-90")} />
                   <CatIcon className="w-3.5 h-3.5" />
-                  <span>{cat.label}</span>
-                  <Badge variant="secondary" className="ml-auto text-[9px] px-1.5 py-0 h-4 bg-muted/50">{catTemplates.length}</Badge>
+                  <span className="text-[13px]">{cat.label}</span>
+                  <Badge variant="secondary" className="ml-auto text-[11px] px-1.5 py-0 h-4 bg-muted/50">{catTemplates.length}</Badge>
                 </button>
                 {isExpanded && (
                   <div className="ml-2 space-y-0.5 mt-0.5">
@@ -74,13 +74,13 @@ export function StepPalette() {
                           className="flex items-center gap-2 px-2 py-1.5 rounded-xl cursor-grab active:cursor-grabbing border border-transparent hover:border-white/10 transition-all hover:bg-muted/20 group"
                         >
                           <div className="w-6 h-6 rounded-xl flex items-center justify-center shrink-0 bg-muted/40 border border-white/5">
-                            <Icon className="w-3 h-3 text-muted-foreground" />
+                            <Icon className="w-3.5 h-3.5 text-muted-foreground" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[11px] font-medium truncate">{template.label}</p>
-                            <p className="text-[9px] text-muted-foreground/50 truncate">{template.description}</p>
+                            <p className="text-[12px] font-medium truncate">{template.label}</p>
+                            <p className="text-[10px] text-muted-foreground/80 truncate">{template.description}</p>
                           </div>
-                          <GripVertical className="w-3 h-3 text-muted-foreground/15 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <GripVertical className="w-3.5 h-3.5 text-muted-foreground/70 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       )
                     })}
