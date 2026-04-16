@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 CODEBUDDY.md
 backend
+# cli 目录为独立仓库 https://github.com/wieszheng/open-cli.git
+cli/
