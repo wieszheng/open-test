@@ -377,3 +377,84 @@ export async function fetchWorkflowedCaseIds(): Promise<number[]> {
   if (!res.ok) return []
   return res.json()
 }
+
+
+// ===================== 运行 Job API =====================
+
+export interface RunJobEvent {
+  type: "node_start" | "node_done" | "complete" | "error" | "heartbeat" | "delegate_to_agent"
+  node_id?: string | null
+  label?: string | null
+  success?: boolean | null
+  message?: string | null
+  duration?: number | null   // seconds
+  node_data?: Record<string, unknown> | null  // appUiAction 节点数据（委派时携带）
+}
+
+/** 创建一个 RunJob，返回 job_id */
+export async function createRunJob(testCaseId: number): Promise<string> {
+  const res = await fetch(`${API_BASE}/run-jobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ test_case_id: testCaseId }),
+  })
+  if (!res.ok) throw new Error("创建执行任务失败")
+  const data = await res.json()
+  return data.job_id as string
+}
+
+/**
+ * 订阅 SSE 执行事件流。
+ * 返回一个 cleanup 函数，调用后断开连接。
+ */
+export function subscribeRunJob(
+  jobId: string,
+  onEvent: (ev: RunJobEvent) => void,
+  onError?: (err: Event) => void,
+): () => void {
+  const es = new EventSource(`${API_BASE}/run-jobs/${jobId}/stream`)
+  es.onmessage = (e) => {
+    try {
+      const ev: RunJobEvent = JSON.parse(e.data)
+      onEvent(ev)
+      if (ev.type === "complete" || ev.type === "error") {
+        es.close()
+      }
+    } catch {
+      // ignore parse error
+    }
+  }
+  if (onError) es.onerror = onError
+  return () => es.close()
+}
+
+const LOCAL_AGENT = "http://localhost:7357"
+
+/** 将本地 Agent 执行结果回传给服务端，恢复暂停的执行引擎 */
+export async function reportAgentResult(
+  jobId: string,
+  nodeId: string,
+  success: boolean,
+  message: string,
+  duration: number,
+): Promise<void> {
+  await fetch(`${API_BASE}/run-jobs/${jobId}/node-result`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ node_id: nodeId, success, message, duration }),
+  })
+}
+
+/** 调用本地 Agent 执行一个节点，返回执行结果 */
+export async function callLocalAgent(
+  nodeId: string,
+  nodeData: Record<string, unknown>,
+): Promise<{ success: boolean; message: string; duration: number }> {
+  const res = await fetch(`${LOCAL_AGENT}/execute`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ node_id: nodeId, node_data: nodeData }),
+  })
+  if (!res.ok) throw new Error(`Local agent error: ${res.status}`)
+  return res.json()
+}

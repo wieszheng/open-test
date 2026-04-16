@@ -1,203 +1,277 @@
-# Open Test - 测试用例管理系统
+# Open Test — 自动化测试平台
 
-一个现代化的测试用例管理平台，支持脚本市场、测试用例管理、目录组织和执行统计。
+可视化工作流编排 + 本地 Agent 执行，支持 API 接口测试与 Android App UI 自动化。
 
-## 技术栈
-
-### 前端
-- **框架**: React 19 + TypeScript
-- **构建工具**: Vite 8
-- **样式**: Tailwind CSS 4 + CSS 变量
-- **UI 组件库**: shadcn/ui (Radix UI)
-- **图标**: Lucide React
-
-### 后端
-- **框架**: FastAPI
-- **ORM**: SQLAlchemy 2.0 (异步)
-- **数据库**: SQLite (aiosqlite)
-
-## 快速开始
-
-### 前端
-
-```bash
-# 安装依赖
-npm install
-
-# 开发服务器（热重载）
-npm run dev
-
-# 生产构建
-npm run build
-
-# ESLint 检查
-npm run lint
+```
+浏览器（工作流画布）
+    │  点击执行
+    ▼
+后端服务 :8000          ← HTTP/断言/提取/等待 节点在此执行
+    │  appUiAction 委派
+    ▼
+本地 Agent :7357        ← ADB/UI 节点在此执行（需连接 Android 设备）
 ```
 
-### 后端
+---
+
+## 快速启动
+
+### 1. 后端服务
 
 ```bash
-cd backend
-
-# 安装依赖
+cd open-server
 pip install -r requirements.txt
-
-# 初始化示例数据
-python seed.py
-
-# 启动服务
-uvicorn main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8000
 ```
+
+### 2. 前端
+
+```bash
+# 项目根目录
+npm install
+npm run dev          # 默认 http://localhost:5173
+```
+
+### 3. 本地 Agent（仅需 App UI 自动化时安装）
+
+```bash
+cd cli
+pip install -e .                 # 安装 CLI
+open-test agent install          # 注册为系统服务，开机自启
+open-test agent status           # 验证是否运行
+```
+
+> 首次安装后系统服务自动启动，无需手动执行。
+
+---
 
 ## 项目结构
 
 ```
 open-test/
-├── src/                          # 前端源码
-│   ├── components/               # React 组件
-│   │   ├── ui/                   # shadcn/ui 基础组件
-│   │   ├── Header.tsx             # 顶部导航栏
-│   │   ├── CapsuleSidebar.tsx     # 胶囊侧边栏
-│   │   ├── Console.tsx            # 控制台页面
-│   │   ├── ScriptMarket.tsx       # 脚本市场
-│   │   └── TestCaseMarket.tsx     # 测试用例市场
-│   ├── services/
-│   │   └── api.ts                 # API 调用服务
-│   └── lib/
-│       └── utils.ts               # 工具函数
+├── src/                          # 前端
+│   ├── components/
+│   │   ├── WorkflowEditor.tsx    # 工作流画布主页面
+│   │   └── workflow/
+│   │       ├── nodes.tsx         # 节点组件（各步骤类型的卡片）
+│   │       ├── StepPalette.tsx   # 左侧步骤拖拽面板
+│   │       ├── PropertyPanel.tsx # 右侧节点配置 + 执行日志
+│   │       ├── TestCasePicker.tsx
+│   │       ├── RunResultToast.tsx
+│   │       └── types.ts
+│   └── services/
+│       └── api.ts                # 所有后端 API 调用
 │
-├── backend/                      # 后端源码
-│   ├── main.py                   # FastAPI 入口
-│   ├── config.py                 # 配置
-│   ├── database.py               # 数据库连接
-│   ├── models.py                 # SQLAlchemy 模型（脚本、执行记录）
-│   ├── models_test_case.py       # 测试用例模型
-│   ├── models_directory.py       # 目录模型
-│   ├── schemas.py                # Pydantic schemas
-│   ├── crud.py                   # CRUD 操作
-│   └── routers/                  # API 路由
-│       ├── scripts.py            # 脚本 API
-│       ├── test_cases.py         # 测试用例 API
-│       ├── directories.py        # 目录 API
-│       └── console.py            # 控制台 API
+├── open-server/                  # 后端
+│   └── app/
+│       ├── main.py               # FastAPI 入口
+│       ├── executor.py           # 工作流执行引擎
+│       ├── run_jobs.py           # RunJob 内存存储 + SSE 事件总线
+│       └── routers/
+│           ├── run_jobs.py       # 执行任务路由
+│           ├── workflows.py      # 工作流 CRUD
+│           └── test_cases.py     # 测试用例 CRUD
+│
+└── cli/                          # 本地 Agent CLI
+    └── open_test_agent/
+        ├── main.py               # CLI 入口（click）
+        ├── agent_server.py       # 本地 Agent HTTP 服务（FastAPI :7357）
+        ├── install.py            # 系统服务安装/卸载
+        └── drivers/
+            └── adb.py            # ADB / uiautomator2 驱动
 ```
 
-## 功能模块
+---
 
-### 脚本市场 (ScriptMarket)
-- 浏览和管理测试脚本
-- 按分类筛选
-- 搜索功能
-- 精选脚本推荐
+## 工作流步骤类型
 
-### 测试用例市场 (TestCaseMarket)
-- 测试用例的增删改查
-- **目录管理**：支持最多2层目录结构
-- 按目录、类型、优先级筛选
-- 标签管理
-- 执行统计（通过率、自动化率等）
+| 类型 | 执行位置 | 说明 |
+|------|---------|------|
+| `httpRequest` | 服务端 | HTTP 请求，支持 GET/POST/PUT/DELETE/PATCH |
+| `assertion` | 服务端 | 断言：状态码 / 包含文本 / JSONPath / 相等 |
+| `extract` | 服务端 | 从响应提取变量，供后续步骤 `{{变量名}}` 引用 |
+| `wait` | 服务端 | 等待指定秒数 |
+| `condition` | 服务端 | 条件分支 |
+| `script` | 服务端 | 自定义脚本（Python/JS/Shell，stub） |
+| `sqlQuery` | 服务端 | SQL 查询（stub） |
+| `webUiAction` | 服务端 | Web UI 操作（stub） |
+| `appUiAction` | 本地 Agent | Android App UI 操作，通过 ADB 执行 |
 
-### 控制台 (Console)
-- 测试执行统计概览
-- 执行趋势图表
-- 历史执行记录
+### 变量传递
 
-## API 端点
+在任意字段中使用 `{{变量名}}` 引用 `extract` 步骤提取的变量：
 
-### 脚本
-| 方法 | 路径 | 描述 |
+```
+# extract 步骤：提取 $.data.token → 变量名 auth_token
+# 后续 httpRequest 的 Headers 字段：
+{"Authorization": "Bearer {{auth_token}}"}
+```
+
+---
+
+## App UI 操作（appUiAction）
+
+### 支持的 action
+
+| action | 参数 | 说明 |
+|--------|------|------|
+| `launch_app` | `app_id` | 启动 App，如 `com.example.app` |
+| `click` | `selector` | 点击组件 |
+| `type` | `selector`, `value` | 输入文本 |
+| `swipe` | `value` | 滑动方向：`up/down/left/right` |
+| `wait_element` | `selector` | 等待组件出现（10s 超时） |
+| `screenshot` | — | 截图保存到 `/tmp/` |
+
+### selector 格式
+
+```
+XPath:       //android.widget.Button[@text='登录']
+Resource ID: com.example.app:id/btn_login
+```
+
+---
+
+## 本地 Agent CLI
+
+```bash
+open-test agent install      # 安装系统服务（开机自启）
+open-test agent uninstall    # 卸载系统服务
+open-test agent status       # 查看运行状态 + 已连接设备
+open-test agent start        # 前台启动（调试用，Ctrl+C 退出）
+```
+
+### Agent HTTP 接口
+
+| 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/scripts` | 获取脚本列表 |
-| GET | `/scripts/featured` | 获取精选脚本 |
-| POST | `/scripts` | 创建脚本 |
-| PUT | `/scripts/{id}` | 更新脚本 |
-| DELETE | `/scripts/{id}` | 删除脚本 |
+| GET | `/health` | 状态 + 已连接设备列表 |
+| POST | `/execute` | 执行单个节点 |
+| GET | `/logs` | 查看最近执行日志（`?limit=N`） |
+| GET | `/logs/stream` | SSE 实时尾随日志 |
 
-### 测试用例
-| 方法 | 路径 | 描述 |
+**实时查看 Agent 日志（调试用）：**
+
+```bash
+curl -N http://localhost:7357/logs/stream
+```
+
+---
+
+## 后端 API
+
+### 执行任务（RunJob）
+
+| 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/test-cases` | 获取用例列表 |
-| GET | `/test-cases/{id}` | 获取用例详情 |
-| GET | `/test-cases/stats` | 获取用例统计 |
+| POST | `/run-jobs` | 创建并立即执行工作流，返回 `job_id` |
+| GET | `/run-jobs/{id}/stream` | SSE 订阅执行事件 |
+| POST | `/run-jobs/{id}/node-result` | 浏览器回传本地 Agent 结果 |
+| GET | `/run-jobs/{id}` | 查询 Job 状态 |
+
+### SSE 事件类型
+
+```jsonc
+{"type": "node_start",  "node_id": "...", "label": "..."}
+{"type": "node_done",   "node_id": "...", "success": true, "message": "...", "duration": 0.35}
+{"type": "delegate_to_agent", "node_id": "...", "node_data": {...}}   // appUiAction 委派
+{"type": "complete",    "success": true,  "message": "4/4 通过"}
+{"type": "error",       "message": "..."}
+{"type": "heartbeat"}   // 保活，30s 一次
+```
+
+### 工作流 / 测试用例
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/test-cases/{id}/flow` | 获取工作流 |
+| PUT | `/test-cases/{id}/flow` | 保存工作流 |
+| GET | `/test-cases` | 用例列表 |
 | POST | `/test-cases` | 创建用例 |
 | PUT | `/test-cases/{id}` | 更新用例 |
 | DELETE | `/test-cases/{id}` | 删除用例 |
 
-### 目录
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | `/directories` | 获取目录列表 |
-| GET | `/directories/{id}` | 获取目录详情 |
-| POST | `/directories` | 创建目录 |
-| PUT | `/directories/{id}` | 更新目录 |
-| DELETE | `/directories/{id}` | 删除目录 |
+---
 
-### 控制台
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | `/console/stats` | 获取控制台统计 |
-| GET | `/console/executions` | 获取执行记录 |
-| POST | `/console/executions` | 创建执行记录 |
+## 开发指南
 
-## 数据模型
-
-### 目录 (Directory)
-```
-- id: 主键
-- name: 目录名称
-- description: 描述
-- icon: 图标
-- color: 颜色主题
-- parent_id: 父目录ID（支持2层目录）
-- sort_order: 排序
-- case_count: 用例数量
-- is_default: 是否默认目录
-- created_at: 创建时间
-- updated_at: 更新时间
-```
-
-### 测试用例 (TestCase)
-```
-- id: 主键
-- name: 用例名称
-- description: 描述
-- case_type: 类型 (api/ui/e2e/unit/perf)
-- priority: 优先级 (P0/P1/P2/P3)
-- status: 状态 (active/deprecated/draft)
-- module: 所属模块
-- directory_id: 所属目录
-- preconditions: 前置条件
-- test_steps: 测试步骤
-- expected_results: 预期结果
-- author: 作者
-- tags: 标签
-- script_id: 关联脚本
-- is_automated: 是否自动化
-- is_parallel: 是否可并行
-- total_runs: 总执行次数
-- passed_runs: 通过次数
-- failed_runs: 失败次数
-- flaky: 是否不稳定
-```
-
-## 初始化数据
+### 本地联调三服务
 
 ```bash
-cd backend
+# 终端 1：后端
+cd open-server && uvicorn app.main:app --reload --port 8000
 
-# 初始化所有示例数据（脚本、用例、目录）
-python seed.py
+# 终端 2：前端
+npm run dev
 
-# 或单独初始化
-python seed_scripts.py      # 脚本
-python seed_directories.py   # 目录
-python seed_test_cases.py    # 用例
+# 终端 3：本地 Agent（前台模式，可看日志）
+cd cli && open-test agent start
 ```
 
-## 代码规范
+### 切换 ADB 真实执行
 
-- 每个函数/类只做一件事
-- 相似逻辑封装为函数或工具类
-- 公共接口、复杂算法、非直观逻辑需附带注释
-- 函数包含 docstring（Google/NumPy 风格）
-- 缩进、命名、空格、换行格式统一
+1. 连接 Android 设备（USB 或 WiFi ADB）
+2. 安装 uiautomator2：`pip install open-test-agent[android]`
+3. 编辑 [cli/open_test_agent/drivers/adb.py](cli/open_test_agent/drivers/adb.py)，将第 13 行改为：
+   ```python
+   STUB = False
+   ```
+4. 重启 Agent：`open-test agent start`
+
+### Flow JSON 格式
+
+工作流以 JSON 存储在数据库，可用 [cli/example_flow.json](cli/example_flow.json) 测试：
+
+```bash
+open-test run --file cli/example_flow.json
+```
+
+节点结构：
+
+```jsonc
+{
+  "nodes": [
+    {
+      "id": "step_1",
+      "type": "httpRequest",       // 节点类型
+      "position": {"x": 100, "y": 100},
+      "data": {
+        "label": "获取用户列表",   // 显示名称
+        "method": "GET",
+        "url": "https://api.example.com/users"
+      }
+    }
+  ],
+  "edges": [
+    {"id": "e1-2", "source": "step_1", "target": "step_2"}
+  ]
+}
+```
+
+### 执行引擎扩展
+
+在 [open-server/app/executor.py](open-server/app/executor.py) 的 `_execute_node` 中注册新节点类型：
+
+```python
+handlers = {
+    "httpRequest": _run_http,
+    "myCustomNode": _run_my_custom,   # 新增
+    ...
+}
+```
+
+---
+
+## 系统服务说明
+
+| 系统 | 服务类型 | 配置文件 |
+|------|---------|---------|
+| macOS | launchd LaunchAgent | `~/Library/LaunchAgents/com.opentest.agent.plist` |
+| Linux | systemd user service | `~/.config/systemd/user/open-test-agent.service` |
+| Windows | 任务计划程序 | 任务名 `open-test-agent` |
+
+服务日志（macOS）：
+
+```bash
+tail -f ~/Library/Logs/open-test-agent.log
+tail -f ~/Library/Logs/open-test-agent-error.log
+```

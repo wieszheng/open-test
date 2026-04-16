@@ -80,16 +80,11 @@ function App() {
         />
 
         {/* 自动化工作流：撑满剩余高度，无 padding */}
-        {activeMenuId === "automation" ? (
-          <div className="flex-1 overflow-auto pt-2 pl-6 pb-6">
-            <WorkflowEditor />
-          </div>
-        ) : (
-          /* 普通页面：可滚动，带 padding */
-          <div className="flex-1 overflow-auto pt-2 pl-6 pb-6">
+
+          <div className="flex-1 overflow-auto pt-2 pb-6 px-6">
             {activeMenuId === "script-market" && <ScriptMarket />}
             {activeMenuId === "test-cases" && <TestCaseMarket />}
-
+            {activeMenuId === "automation" && <WorkflowEditor />}
             {activeTab === "console" && activeMenuId === "home" && <Console />}
             {activeTab === "env" && (
               <div className="text-center py-20">
@@ -100,7 +95,6 @@ function App() {
               <TestReport />
             )}
           </div>
-        )}
       </main>
     </div>
   );
