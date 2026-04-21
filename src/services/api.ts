@@ -412,19 +412,35 @@ export function subscribeRunJob(
   onEvent: (ev: RunJobEvent) => void,
   onError?: (err: Event) => void,
 ): () => void {
+  console.log("🔵 创建 EventSource:", `${API_BASE}/run-jobs/${jobId}/stream`)
   const es = new EventSource(`${API_BASE}/run-jobs/${jobId}/stream`)
+  
+  es.onopen = () => {
+    console.log("🔵 EventSource 连接成功")
+  }
+  
   es.onmessage = (e) => {
     try {
       const ev: RunJobEvent = JSON.parse(e.data)
-      onEvent(ev)
-      if (ev.type === "complete" || ev.type === "error") {
-        es.close()
+      try {
+        onEvent(ev)
+        if (ev.type === "complete" || ev.type === "error") {
+          es.close()
+        }
+      } catch (callbackErr) {
+        console.error("SSE 事件回调执行失败:", callbackErr)
       }
-    } catch {
-      // ignore parse error
+    } catch (err) {
+      console.warn("SSE 消息解析失败:", err)
     }
   }
-  if (onError) es.onerror = onError
+  
+  es.onerror = (err) => {
+    console.error("🔴 EventSource 错误:", err, "readyState:", es.readyState)
+    es.close()
+    onError?.(err)
+  }
+  
   return () => es.close()
 }
 
@@ -437,11 +453,12 @@ export async function reportAgentResult(
   success: boolean,
   message: string,
   duration: number,
+  screenshot?: string | null,
 ): Promise<void> {
   await fetch(`${API_BASE}/run-jobs/${jobId}/node-result`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ node_id: nodeId, success, message, duration }),
+    body: JSON.stringify({ node_id: nodeId, success, message, duration, screenshot: screenshot ?? null }),
   })
 }
 
@@ -449,12 +466,30 @@ export async function reportAgentResult(
 export async function callLocalAgent(
   nodeId: string,
   nodeData: Record<string, unknown>,
-): Promise<{ success: boolean; message: string; duration: number }> {
+): Promise<{ success: boolean; message: string; duration: number; screenshot?: string | null }> {
   const res = await fetch(`${LOCAL_AGENT}/execute`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ node_id: nodeId, node_data: nodeData }),
+    signal: AbortSignal.timeout(90_000),  // 90s，比服务端 120s 提前超时
   })
   if (!res.ok) throw new Error(`Local agent error: ${res.status}`)
+  return res.json()
+}
+
+export interface NodeResult {
+  node_id: string
+  label: string
+  success: boolean
+  message: string
+  duration: number
+  screenshot: string | null
+}
+
+/** 获取某用例的执行记录（含节点截图 base64），无记录时返回 null */
+export async function getCaseExecution(caseId: number): Promise<{ timestamp: string; node_results: NodeResult[] } | null> {
+  const res = await fetch(`${API_BASE}/test-cases/${caseId}/execution`)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`getCaseExecution error: ${res.status}`)
   return res.json()
 }

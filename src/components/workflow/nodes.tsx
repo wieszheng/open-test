@@ -13,23 +13,24 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  Code2,
   Timer,
   GitBranch,
   Variable,
   FileJson,
-  Play,
   Terminal,
   Eye,
   Type,
-  Navigation,
   Pointer,
-  Upload,
   Braces,
   Send,
   Smartphone,
   AppWindow,
   MoveUp,
+  Hand,
+  Keyboard,
+  ScanLine,
+  Eraser,
+  Camera,
   type LucideIcon,
 } from "lucide-react"
 
@@ -47,27 +48,54 @@ export interface HttpStepData {
   [key: string]: unknown
 }
 
-/** Web UI 操作步骤 */
-export interface WebUiStepData {
+/** App UI 操作步骤（action 在创建时固定，不可修改） */
+export interface AppUiStepData {
   label: string
-  action: "navigate" | "click" | "type" | "select" | "scroll" | "wait_element" | "screenshot" | "upload"
+  /** 操作类型，由 node type 决定，面板中只读 */
+  action:
+    | "launch_app"
+    | "click"
+    | "long_press"
+    | "double_click"
+    | "type"
+    | "clear_text"
+    | "swipe"
+    | "tap_xy"
+    | "wait_element"
+    | "get_text"
+    | "screenshot"
+    | "press_key"
   selector?: string
   value?: string
-  url?: string
+  app_id?: string
+  coordinates?: string
+  duration_ms?: number
+  key_code?: string
+  var_name?: string
   status?: "idle" | "running" | "success" | "error"
   [key: string]: unknown
 }
 
-/** App UI 操作步骤 */
-export interface AppUiStepData {
-  label: string
-  action: "launch_app" | "click" | "type" | "swipe" | "wait_element" | "screenshot"
-  selector?: string
-  value?: string
-  app_id?: string
-  status?: "idle" | "running" | "success" | "error"
-  [key: string]: unknown
-}
+// App UI 各操作独立 node type
+export type AppLaunchAppNode  = Node<AppUiStepData, "appLaunchApp">
+export type AppClickNode      = Node<AppUiStepData, "appClick">
+export type AppLongPressNode  = Node<AppUiStepData, "appLongPress">
+export type AppDoubleClickNode= Node<AppUiStepData, "appDoubleClick">
+export type AppTypeNode       = Node<AppUiStepData, "appType">
+export type AppClearTextNode  = Node<AppUiStepData, "appClearText">
+export type AppSwipeNode      = Node<AppUiStepData, "appSwipe">
+export type AppTapXyNode      = Node<AppUiStepData, "appTapXy">
+export type AppWaitElementNode= Node<AppUiStepData, "appWaitElement">
+export type AppGetTextNode    = Node<AppUiStepData, "appGetText">
+export type AppScreenshotNode = Node<AppUiStepData, "appScreenshot">
+export type AppPressKeyNode   = Node<AppUiStepData, "appPressKey">
+
+/** 所有 App UI 操作 node type 名称集合（用于判断） */
+export const APP_UI_NODE_TYPES = new Set([
+  "appLaunchApp","appClick","appLongPress","appDoubleClick",
+  "appType","appClearText","appSwipe","appTapXy",
+  "appWaitElement","appGetText","appScreenshot","appPressKey",
+])
 
 /** SQL 查询步骤 */
 export interface SqlStepData {
@@ -127,15 +155,14 @@ export interface ConditionStepData {
 // ===================== 节点类型定义 =====================
 
 export type HttpStepNode = Node<HttpStepData, "httpRequest">
-export type WebUiStepNode = Node<WebUiStepData, "webUiAction">
-export type AppUiStepNode = Node<AppUiStepData, "appUiAction">
+export type AppUiStepNode = AppLaunchAppNode | AppClickNode | AppLongPressNode | AppDoubleClickNode | AppTypeNode | AppClearTextNode | AppSwipeNode | AppTapXyNode | AppWaitElementNode | AppGetTextNode | AppScreenshotNode | AppPressKeyNode
 export type SqlStepNode = Node<SqlStepData, "sqlQuery">
 export type AssertStepNode = Node<AssertStepData, "assertion">
 export type ExtractStepNode = Node<ExtractStepData, "extract">
 export type ScriptStepNode = Node<ScriptStepData, "script">
 export type WaitStepNode = Node<WaitStepData, "wait">
 export type ConditionStepNode = Node<ConditionStepData, "condition">
-export type StepNode = HttpStepNode | WebUiStepNode | AppUiStepNode | SqlStepNode | AssertStepNode | ExtractStepNode | ScriptStepNode | WaitStepNode | ConditionStepNode
+export type StepNode = HttpStepNode | AppUiStepNode | SqlStepNode | AssertStepNode | ExtractStepNode | ScriptStepNode | WaitStepNode | ConditionStepNode
 
 // ===================== 步骤模板（拖拽面板用） =====================
 
@@ -158,50 +185,9 @@ export const STEP_TEMPLATES: StepTemplate[] = [
     category: "request",
     defaultData: { label: "HTTP 请求", method: "GET", url: "", headers: "", body: "" },
   },
-  // ---- Web UI 操作 ----
-  {
-    type: "webUiAction",
-    label: "打开页面",
-    icon: Navigation,
-    description: "浏览器打开指定 URL",
-    category: "web_ui",
-    defaultData: { label: "打开页面", action: "navigate", url: "" },
-  },
-  {
-    type: "webUiAction",
-    label: "点击元素(Web)",
-    icon: Pointer,
-    description: "点击网页元素",
-    category: "web_ui",
-    defaultData: { label: "点击元素", action: "click", selector: "" },
-  },
-  {
-    type: "webUiAction",
-    label: "输入文本(Web)",
-    icon: Type,
-    description: "在网页输入框输入",
-    category: "web_ui",
-    defaultData: { label: "输入文本", action: "type", selector: "", value: "" },
-  },
-  {
-    type: "webUiAction",
-    label: "等待元素(Web)",
-    icon: Eye,
-    description: "等待网页元素出现",
-    category: "web_ui",
-    defaultData: { label: "等待元素", action: "wait_element", selector: "" },
-  },
-  {
-    type: "webUiAction",
-    label: "上传文件(Web)",
-    icon: Upload,
-    description: "上传文件到表单",
-    category: "web_ui",
-    defaultData: { label: "上传文件", action: "upload", selector: "", value: "" },
-  },
   // ---- App UI 操作 ----
   {
-    type: "appUiAction",
+    type: "appLaunchApp",
     label: "启动应用",
     icon: AppWindow,
     description: "启动目标 App",
@@ -209,36 +195,92 @@ export const STEP_TEMPLATES: StepTemplate[] = [
     defaultData: { label: "启动应用", action: "launch_app", app_id: "" },
   },
   {
-    type: "appUiAction",
-    label: "点击组件(App)",
+    type: "appClick",
+    label: "点击组件",
     icon: Pointer,
     description: "点击 App 内组件",
     category: "app_ui",
     defaultData: { label: "点击组件", action: "click", selector: "" },
   },
   {
-    type: "appUiAction",
-    label: "输入文本(App)",
+    type: "appLongPress",
+    label: "长按组件",
+    icon: Hand,
+    description: "长按 App 内组件",
+    category: "app_ui",
+    defaultData: { label: "长按组件", action: "long_press", selector: "", duration_ms: 1000 },
+  },
+  {
+    type: "appDoubleClick",
+    label: "双击组件",
+    icon: MousePointerClick,
+    description: "双击 App 内组件",
+    category: "app_ui",
+    defaultData: { label: "双击组件", action: "double_click", selector: "" },
+  },
+  {
+    type: "appType",
+    label: "输入文本",
     icon: Type,
     description: "在 App 输入框输入",
     category: "app_ui",
     defaultData: { label: "输入文本", action: "type", selector: "", value: "" },
   },
   {
-    type: "appUiAction",
-    label: "滑动屏幕(App)",
+    type: "appClearText",
+    label: "清空文本",
+    icon: Eraser,
+    description: "清空 App 输入框内容",
+    category: "app_ui",
+    defaultData: { label: "清空文本", action: "clear_text", selector: "" },
+  },
+  {
+    type: "appSwipe",
+    label: "滑动屏幕",
     icon: MoveUp,
     description: "在 App 屏幕滑动",
     category: "app_ui",
     defaultData: { label: "滑动屏幕", action: "swipe", value: "up" },
   },
   {
-    type: "appUiAction",
-    label: "等待组件(App)",
+    type: "appTapXy",
+    label: "坐标点击",
+    icon: ScanLine,
+    description: "按坐标点击屏幕",
+    category: "app_ui",
+    defaultData: { label: "坐标点击", action: "tap_xy", coordinates: "" },
+  },
+  {
+    type: "appWaitElement",
+    label: "等待组件",
     icon: Eye,
     description: "等待 App 组件出现",
     category: "app_ui",
     defaultData: { label: "等待组件", action: "wait_element", selector: "" },
+  },
+  {
+    type: "appGetText",
+    label: "获取文本",
+    icon: Variable,
+    description: "获取组件文本存入变量",
+    category: "app_ui",
+    defaultData: { label: "获取文本", action: "get_text", selector: "", var_name: "" },
+  },
+  {
+    type: "appScreenshot",
+    label: "截图",
+    icon: Camera,
+    description: "截取当前屏幕",
+    category: "app_ui",
+    defaultData: { label: "截图", action: "screenshot" },
+  },
+  {
+    type: "appPressKey",
+    label: "按键操作",
+    icon: Keyboard,
+    description: "按下系统按键",
+    category: "app_ui",
+    defaultData: { label: "按键操作", action: "press_key", key_code: "home" },
   },
   // ---- 数据处理 ----
   {
@@ -294,7 +336,6 @@ export const STEP_TEMPLATES: StepTemplate[] = [
 
 export const STEP_CATEGORIES = [
   { id: "request", label: "接口请求", icon: Send },
-  { id: "web_ui", label: "Web 操作", icon: MousePointerClick },
   { id: "app_ui", label: "App 操作", icon: Smartphone },
   { id: "data", label: "数据处理", icon: Braces },
   { id: "verify", label: "验证与控制", icon: CheckCircle2 },
@@ -303,9 +344,20 @@ export const STEP_CATEGORIES = [
 // ===================== 节点色彩 =====================
 
 const STEP_COLORS: Record<string, { border: string; bg: string; text: string; iconBg: string; ring: string }> = {
-  httpRequest: { border: "border-blue-500/30", bg: "bg-blue-500/5", text: "text-blue-500", iconBg: "bg-blue-500/10", ring: "ring-blue-500/20" },
-  webUiAction: { border: "border-orange-500/30", bg: "bg-orange-500/5", text: "text-orange-500", iconBg: "bg-orange-500/10", ring: "ring-orange-500/20" },
-  appUiAction: { border: "border-purple-500/30", bg: "bg-purple-500/5", text: "text-purple-500", iconBg: "bg-purple-500/10", ring: "ring-purple-500/20" },
+  httpRequest:    { border: "border-blue-500/30",   bg: "bg-blue-500/5",   text: "text-blue-500",   iconBg: "bg-blue-500/10",   ring: "ring-blue-500/20" },
+  // App UI 操作共用紫色系
+  appLaunchApp:   { border: "border-purple-500/30", bg: "bg-purple-500/5", text: "text-purple-500", iconBg: "bg-purple-500/10", ring: "ring-purple-500/20" },
+  appClick:       { border: "border-purple-500/30", bg: "bg-purple-500/5", text: "text-purple-500", iconBg: "bg-purple-500/10", ring: "ring-purple-500/20" },
+  appLongPress:   { border: "border-purple-500/30", bg: "bg-purple-500/5", text: "text-purple-500", iconBg: "bg-purple-500/10", ring: "ring-purple-500/20" },
+  appDoubleClick: { border: "border-purple-500/30", bg: "bg-purple-500/5", text: "text-purple-500", iconBg: "bg-purple-500/10", ring: "ring-purple-500/20" },
+  appType:        { border: "border-purple-500/30", bg: "bg-purple-500/5", text: "text-purple-500", iconBg: "bg-purple-500/10", ring: "ring-purple-500/20" },
+  appClearText:   { border: "border-purple-500/30", bg: "bg-purple-500/5", text: "text-purple-500", iconBg: "bg-purple-500/10", ring: "ring-purple-500/20" },
+  appSwipe:       { border: "border-purple-500/30", bg: "bg-purple-500/5", text: "text-purple-500", iconBg: "bg-purple-500/10", ring: "ring-purple-500/20" },
+  appTapXy:       { border: "border-purple-500/30", bg: "bg-purple-500/5", text: "text-purple-500", iconBg: "bg-purple-500/10", ring: "ring-purple-500/20" },
+  appWaitElement: { border: "border-purple-500/30", bg: "bg-purple-500/5", text: "text-purple-500", iconBg: "bg-purple-500/10", ring: "ring-purple-500/20" },
+  appGetText:     { border: "border-purple-500/30", bg: "bg-purple-500/5", text: "text-purple-500", iconBg: "bg-purple-500/10", ring: "ring-purple-500/20" },
+  appScreenshot:  { border: "border-purple-500/30", bg: "bg-purple-500/5", text: "text-purple-500", iconBg: "bg-purple-500/10", ring: "ring-purple-500/20" },
+  appPressKey:    { border: "border-purple-500/30", bg: "bg-purple-500/5", text: "text-purple-500", iconBg: "bg-purple-500/10", ring: "ring-purple-500/20" },
   sqlQuery:    { border: "border-emerald-500/30", bg: "bg-emerald-500/5", text: "text-emerald-500", iconBg: "bg-emerald-500/10", ring: "ring-emerald-500/20" },
   assertion:   { border: "border-violet-500/30", bg: "bg-violet-500/5", text: "text-violet-500", iconBg: "bg-violet-500/10", ring: "ring-violet-500/20" },
   extract:     { border: "border-cyan-500/30", bg: "bg-cyan-500/5", text: "text-cyan-500", iconBg: "bg-cyan-500/10", ring: "ring-cyan-500/20" },
@@ -314,37 +366,29 @@ const STEP_COLORS: Record<string, { border: string; bg: string; text: string; ic
   condition:   { border: "border-pink-500/30", bg: "bg-pink-500/5", text: "text-pink-500", iconBg: "bg-pink-500/10", ring: "ring-pink-500/20" },
 }
 
-function getStepIcon(type: string, data: Record<string, unknown>): LucideIcon {
-  if (type === "httpRequest") return Globe
-  if (type === "webUiAction") {
-    const a = data.action as string
-    switch (a) {
-      case "navigate": return Navigation
-      case "click": return Pointer
-      case "type": return Type
-      case "wait_element": return Eye
-      case "upload": return Upload
-      default: return MousePointerClick
-    }
+function getStepIcon(type: string): LucideIcon {
+  const iconMap: Record<string, LucideIcon> = {
+    httpRequest:    Globe,
+    appLaunchApp:   AppWindow,
+    appClick:       Pointer,
+    appLongPress:   Hand,
+    appDoubleClick: MousePointerClick,
+    appType:        Type,
+    appClearText:   Eraser,
+    appSwipe:       MoveUp,
+    appTapXy:       ScanLine,
+    appWaitElement: Eye,
+    appGetText:     Variable,
+    appScreenshot:  Camera,
+    appPressKey:    Keyboard,
+    sqlQuery:       Database,
+    assertion:      CheckCircle2,
+    extract:        FileJson,
+    script:         Terminal,
+    wait:           Timer,
+    condition:      GitBranch,
   }
-  if (type === "appUiAction") {
-    const a = data.action as string
-    switch (a) {
-      case "launch_app": return AppWindow
-      case "click": return Pointer
-      case "type": return Type
-      case "swipe": return MoveUp
-      case "wait_element": return Eye
-      default: return Smartphone
-    }
-  }
-  if (type === "sqlQuery") return Database
-  if (type === "assertion") return CheckCircle2
-  if (type === "extract") return Variable
-  if (type === "script") return Terminal
-  if (type === "wait") return Timer
-  if (type === "condition") return GitBranch
-  return Code2
+  return iconMap[type] ?? Smartphone
 }
 
 // ===================== 状态指示器 =====================
@@ -401,73 +445,68 @@ export const HttpRequestNode = memo(({ data, selected }: NodeProps<HttpStepNode>
 })
 HttpRequestNode.displayName = "HttpRequestNode"
 
-// ===================== Web UI 操作 节点 =====================
-
-const WEB_UI_ACTION_LABELS: Record<string, string> = {
-  navigate: "打开Web页", click: "点击Web元素", type: "Web输入文本",
-  select: "Web选择下拉", scroll: "Web滚动页面", wait_element: "等待Web元素",
-  screenshot: "Web截图", upload: "Web上传文件",
-}
-
-export const WebUiActionNode = memo(({ data, selected }: NodeProps<WebUiStepNode>) => {
-  const c = STEP_COLORS.webUiAction
-  const Icon = getStepIcon("webUiAction", data as unknown as Record<string, unknown>)
-  return (
-    <div className={cn("relative rounded-2xl border-2 px-4 py-3 min-w-[200px] max-w-[260px] bg-sidebar shadow-sm transition-all", selected ? `${c.border} shadow-lg ring-2 ${c.ring}` : "border-white/10 hover:border-white/20")}>
-      <StatusDot status={data.status} />
-      <Handle type="target" position={Position.Left} className={cn(handleTargetClass, "!border-orange-500/40")} />
-      <div className="flex items-center gap-2.5 mb-1">
-        <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center border shrink-0", c.iconBg, c.border)}>
-          <Icon className={cn("w-4 h-4", c.text)} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold truncate">{data.label}</p>
-          <p className="text-[10px] text-muted-foreground">{WEB_UI_ACTION_LABELS[data.action] || data.action}</p>
-        </div>
-      </div>
-      {data.selector && (
-        <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-xl px-2 py-1 font-mono truncate">{data.selector}</div>
-      )}
-      {data.url && (
-        <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-xl px-2 py-1 font-mono truncate">{data.url}</div>
-      )}
-      <Handle type="source" position={Position.Right} className={cn(handleSourceClass, "!border-orange-500/40")} />
-    </div>
-  )
-})
-WebUiActionNode.displayName = "WebUiActionNode"
-
-// ===================== App UI 操作 节点 =====================
+// ===================== App UI 操作 节点（通用渲染器，按 node type 区分图标） =====================
 
 const APP_UI_ACTION_LABELS: Record<string, string> = {
-  launch_app: "启动 App", click: "点击App组件", type: "App输入文本",
-  swipe: "屏幕滑动", wait_element: "等待App组件", screenshot: "App截图",
+  launch_app:   "启动 App",
+  click:        "点击组件",
+  long_press:   "长按组件",
+  double_click: "双击组件",
+  type:         "输入文本",
+  clear_text:   "清空文本",
+  swipe:        "滑动屏幕",
+  tap_xy:       "坐标点击",
+  wait_element: "等待组件",
+  get_text:     "获取文本",
+  screenshot:   "截图",
+  press_key:    "按键操作",
 }
 
-export const AppUiActionNode = memo(({ data, selected }: NodeProps<AppUiStepNode>) => {
-  const c = STEP_COLORS.appUiAction
-  const Icon = getStepIcon("appUiAction", data as unknown as Record<string, unknown>)
-  return (
-    <div className={cn("relative rounded-2xl border-2 px-4 py-3 min-w-[200px] max-w-[260px] bg-sidebar shadow-sm transition-all", selected ? `${c.border} shadow-lg ring-2 ${c.ring}` : "border-white/10 hover:border-white/20")}>
-      <StatusDot status={data.status} />
-      <Handle type="target" position={Position.Left} className={cn(handleTargetClass, "!border-purple-500/40")} />
-      <div className="flex items-center gap-2.5 mb-1">
-        <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center border shrink-0", c.iconBg, c.border)}>
-          <Icon className={cn("w-4 h-4", c.text)} />
+/** 通用 App UI 操作节点渲染器，由 useNodeType() 感知自身 type */
+function makeAppUiNode(nodeType: string) {
+  const Component = memo(({ data, selected }: NodeProps) => {
+    const c = STEP_COLORS[nodeType] ?? STEP_COLORS.appLaunchApp
+    const Icon = getStepIcon(nodeType)
+    const d = data as AppUiStepData
+    const actionLabel = APP_UI_ACTION_LABELS[d.action as string] || d.action
+    // 节点预览：按 action 决定副标题内容
+    const preview = d.app_id || d.selector || d.coordinates || d.value || null
+    return (
+      <div className={cn("relative rounded-2xl border-2 px-4 py-3 min-w-[200px] max-w-[260px] bg-sidebar shadow-sm transition-all", selected ? `${c.border} shadow-lg ring-2 ${c.ring}` : "border-white/10 hover:border-white/20")}>
+        <StatusDot status={d.status} />
+        <Handle type="target" position={Position.Left} className={cn(handleTargetClass, "!border-purple-500/40")} />
+        <div className="flex items-center gap-2.5 mb-1">
+          <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center border shrink-0", c.iconBg, c.border)}>
+            <Icon className={cn("w-4 h-4", c.text)} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold truncate">{d.label}</p>
+            <p className={cn("text-[10px]", c.text, "opacity-70")}>{actionLabel}</p>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold truncate">{data.label}</p>
-          <p className="text-[10px] text-muted-foreground">{APP_UI_ACTION_LABELS[data.action as string] || data.action}</p>
-        </div>
+        {preview && (
+          <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-xl px-2 py-1 font-mono truncate">{preview}</div>
+        )}
+        <Handle type="source" position={Position.Right} className={cn(handleSourceClass, "!border-purple-500/40")} />
       </div>
-      {(data.selector || data.app_id) && (
-        <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-xl px-2 py-1 font-mono truncate">{data.selector || data.app_id}</div>
-      )}
-      <Handle type="source" position={Position.Right} className={cn(handleSourceClass, "!border-purple-500/40")} />
-    </div>
-  )
-})
-AppUiActionNode.displayName = "AppUiActionNode"
+    )
+  })
+  Component.displayName = `AppUiNode_${nodeType}`
+  return Component
+}
+
+export const AppLaunchAppNode   = makeAppUiNode("appLaunchApp")
+export const AppClickNode_      = makeAppUiNode("appClick")
+export const AppLongPressNode_  = makeAppUiNode("appLongPress")
+export const AppDoubleClickNode_= makeAppUiNode("appDoubleClick")
+export const AppTypeNode_       = makeAppUiNode("appType")
+export const AppClearTextNode_  = makeAppUiNode("appClearText")
+export const AppSwipeNode_      = makeAppUiNode("appSwipe")
+export const AppTapXyNode_      = makeAppUiNode("appTapXy")
+export const AppWaitElementNode_= makeAppUiNode("appWaitElement")
+export const AppGetTextNode_    = makeAppUiNode("appGetText")
+export const AppScreenshotNode_ = makeAppUiNode("appScreenshot")
+export const AppPressKeyNode_   = makeAppUiNode("appPressKey")
 
 // ===================== SQL 查询 节点 =====================
 
@@ -629,13 +668,23 @@ ConditionNode.displayName = "ConditionNode"
 // ===================== 导出节点类型映射 =====================
 
 export const nodeTypes = {
-  httpRequest: HttpRequestNode,
-  webUiAction: WebUiActionNode,
-  appUiAction: AppUiActionNode,
-  sqlQuery: SqlQueryNode,
-  assertion: AssertionNode,
-  extract: ExtractNode,
-  script: ScriptNode,
-  wait: WaitNode,
-  condition: ConditionNode,
+  httpRequest:    HttpRequestNode,
+  appLaunchApp:   AppLaunchAppNode,
+  appClick:       AppClickNode_,
+  appLongPress:   AppLongPressNode_,
+  appDoubleClick: AppDoubleClickNode_,
+  appType:        AppTypeNode_,
+  appClearText:   AppClearTextNode_,
+  appSwipe:       AppSwipeNode_,
+  appTapXy:       AppTapXyNode_,
+  appWaitElement: AppWaitElementNode_,
+  appGetText:     AppGetTextNode_,
+  appScreenshot:  AppScreenshotNode_,
+  appPressKey:    AppPressKeyNode_,
+  sqlQuery:       SqlQueryNode,
+  assertion:      AssertionNode,
+  extract:        ExtractNode,
+  script:         ScriptNode,
+  wait:           WaitNode,
+  condition:      ConditionNode,
 }

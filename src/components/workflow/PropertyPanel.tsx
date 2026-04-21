@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import type { Node } from "@xyflow/react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -12,8 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Settings, X, Trash2 } from "lucide-react"
+import { Settings, X, Trash2, Crosshair } from "lucide-react"
 import type { LogEntry } from "./types"
+import type { DeviceConfig } from "./DeviceBar"
+import { ScreenshotPicker } from "./ScreenshotPicker"
+import { APP_UI_NODE_TYPES } from "./nodes"
+import type { NodeResult } from "@/services/api"
 
 function FieldGroup({
   label,
@@ -39,17 +43,23 @@ export function PropertyPanel({
   onUpdate,
   onDelete,
   logs,
+  nodeResults = [],
+  deviceConfig,
 }: {
   node: Node | null
   onClose: () => void
   onUpdate: (id: string, data: Record<string, unknown>) => void
   onDelete: (id: string) => void
   logs: LogEntry[]
+  nodeResults?: NodeResult[]
+  deviceConfig?: DeviceConfig
 }) {
   if (!node) return null
   const d = node.data as Record<string, unknown>
 
   const setField = (key: string, value: unknown) => onUpdate(node.id, { ...d, [key]: value })
+
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   return (
     <div className="w-72 shrink-0 h-full rounded-2xl bg-sidebar border-l border-white/5 flex flex-col z-10 overflow-hidden">
@@ -95,69 +105,104 @@ export function PropertyPanel({
             </>
           )}
 
-          {/* ---- Web UI 操作配置 ---- */}
-          {node.type === "webUiAction" && (
-            <>
-              <FieldGroup label="操作类型">
-                <Select value={(d.action as string) || "click"} onValueChange={(v) => setField("action", v)}>
-                  <SelectTrigger className="h-8 text-sm rounded-2xl"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="navigate">打开Web页面</SelectItem>
-                    <SelectItem value="click">点击Web元素</SelectItem>
-                    <SelectItem value="type">输入文本(Web)</SelectItem>
-                    <SelectItem value="select">选择下拉(Web)</SelectItem>
-                    <SelectItem value="wait_element">等待Web元素</SelectItem>
-                    <SelectItem value="screenshot">Web截图</SelectItem>
-                    <SelectItem value="upload">Web上传文件</SelectItem>
-                    <SelectItem value="scroll">滚动Web页面</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FieldGroup>
-              {d.action === "navigate" ? (
-                <FieldGroup label="URL" description="完整 URL，如 https://example.com/login">
-                  <Input value={(d.url as string) || ""} onChange={(e) => setField("url", e.target.value)} placeholder="https://example.com" className="h-8 text-xs font-mono rounded-2xl" />
-                </FieldGroup>
-              ) : (
-                <FieldGroup label="元素选择器" description="CSS 选择器，如 #submit-btn 或 .input-name">
-                  <Input value={(d.selector as string) || ""} onChange={(e) => setField("selector", e.target.value)} placeholder="#submit-btn / .input-name" className="h-8 text-xs font-mono rounded-2xl" />
-                </FieldGroup>
-              )}
-              {["type", "upload"].includes(d.action as string) && (
-                <FieldGroup label={d.action === "upload" ? "文件路径" : "输入值"}>
-                  <Input value={(d.value as string) || ""} onChange={(e) => setField("value", e.target.value)} className="h-8 text-xs rounded-2xl" />
-                </FieldGroup>
-              )}
-            </>
-          )}
-
           {/* ---- App UI 操作配置 ---- */}
-          {node.type === "appUiAction" && (
+          {APP_UI_NODE_TYPES.has(node.type ?? "") && (
             <>
-              <FieldGroup label="操作类型">
-                <Select value={(d.action as string) || "click"} onValueChange={(v) => setField("action", v)}>
-                  <SelectTrigger className="h-8 text-sm rounded-2xl"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="launch_app">启动 App</SelectItem>
-                    <SelectItem value="click">点击App组件</SelectItem>
-                    <SelectItem value="type">输入文本(App)</SelectItem>
-                    <SelectItem value="swipe">屏幕滑动</SelectItem>
-                    <SelectItem value="wait_element">等待App组件</SelectItem>
-                    <SelectItem value="screenshot">App截图</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FieldGroup>
-              {d.action === "launch_app" ? (
+              {/* launch_app */}
+              {d.action === "launch_app" && (
                 <FieldGroup label="App Package ID" description="例如：com.example.app">
                   <Input value={(d.app_id as string) || ""} onChange={(e) => setField("app_id", e.target.value)} placeholder="com.example.app" className="h-8 text-xs font-mono rounded-2xl" />
                 </FieldGroup>
-              ) : (
-                <FieldGroup label="组件选择器" description="XPath 或 Resource ID">
+              )}
+
+              {/* tap_xy */}
+              {d.action === "tap_xy" && (
+                <>
+                  <FieldGroup label="坐标 (x,y)" description="点击📸按钮在截图上选取，或手动输入像素坐标">
+                    <div className="flex gap-1.5">
+                      <Input
+                        value={(d.coordinates as string) || ""}
+                        onChange={(e) => setField("coordinates", e.target.value)}
+                        placeholder="540,960"
+                        className="h-8 text-xs font-mono rounded-2xl flex-1"
+                      />
+                      <button
+                        onClick={() => setPickerOpen(true)}
+                        title="在设备截图上点选坐标"
+                        className="h-8 w-8 shrink-0 rounded-2xl border border-white/10 bg-muted/30 hover:bg-muted/60 flex items-center justify-center transition-colors"
+                      >
+                        <Crosshair className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                    </div>
+                  </FieldGroup>
+                  <ScreenshotPicker
+                    open={pickerOpen}
+                    onClose={() => setPickerOpen(false)}
+                    onSelect={(x, y) => setField("coordinates", `${x},${y}`)}
+                    deviceSerial={deviceConfig?.device_serial ?? undefined}
+                    deviceType={deviceConfig?.device_type}
+                  />
+                </>
+              )}
+
+              {/* press_key */}
+              {d.action === "press_key" && (
+                <FieldGroup label="按键名称" description="home / back / recent / volume_up / volume_down / power / enter">
+                  <Select value={(d.key_code as string) || "home"} onValueChange={(v) => setField("key_code", v)}>
+                    <SelectTrigger className="h-8 text-sm rounded-2xl"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="home">Home 键</SelectItem>
+                      <SelectItem value="back">返回键</SelectItem>
+                      <SelectItem value="recent">最近任务键</SelectItem>
+                      <SelectItem value="volume_up">音量+</SelectItem>
+                      <SelectItem value="volume_down">音量-</SelectItem>
+                      <SelectItem value="power">电源键</SelectItem>
+                      <SelectItem value="enter">回车键</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FieldGroup>
+              )}
+
+              {/* selector-based actions */}
+              {!["launch_app", "tap_xy", "press_key", "swipe", "screenshot"].includes(d.action as string) && (
+                <FieldGroup label="组件选择器" description="XPath 或 Resource ID，如 //android.widget.Button[@text='OK'] 或 com.app:id/btn_login">
                   <Input value={(d.selector as string) || ""} onChange={(e) => setField("selector", e.target.value)} placeholder="//android.widget.Button[@text='OK']" className="h-8 text-xs font-mono rounded-2xl" />
                 </FieldGroup>
               )}
-              {["type", "swipe"].includes(d.action as string) && (
-                <FieldGroup label={d.action === "swipe" ? "滑动方向(up/down/left/right)" : "输入值"}>
-                  <Input value={(d.value as string) || ""} onChange={(e) => setField("value", e.target.value)} className="h-8 text-xs rounded-2xl" />
+
+              {/* type: input value */}
+              {d.action === "type" && (
+                <FieldGroup label="输入值" description="支持 {{variable}} 变量引用">
+                  <Input value={(d.value as string) || ""} onChange={(e) => setField("value", e.target.value)} placeholder="输入内容" className="h-8 text-xs rounded-2xl" />
+                </FieldGroup>
+              )}
+
+              {/* swipe: direction */}
+              {d.action === "swipe" && (
+                <FieldGroup label="滑动方向">
+                  <Select value={(d.value as string) || "up"} onValueChange={(v) => setField("value", v)}>
+                    <SelectTrigger className="h-8 text-sm rounded-2xl"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="up">向上</SelectItem>
+                      <SelectItem value="down">向下</SelectItem>
+                      <SelectItem value="left">向左</SelectItem>
+                      <SelectItem value="right">向右</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FieldGroup>
+              )}
+
+              {/* long_press: duration */}
+              {d.action === "long_press" && (
+                <FieldGroup label="按压时长 (ms)" description="默认 1000ms">
+                  <Input type="number" value={(d.duration_ms as number) || 1000} onChange={(e) => setField("duration_ms", Number(e.target.value))} className="h-8 text-sm rounded-2xl" />
+                </FieldGroup>
+              )}
+
+              {/* get_text: var_name */}
+              {d.action === "get_text" && (
+                <FieldGroup label="存入变量名" description="后续步骤通过 {{变量名}} 引用">
+                  <Input value={(d.var_name as string) || ""} onChange={(e) => setField("var_name", e.target.value)} placeholder="element_text" className="h-8 text-xs font-mono rounded-2xl" />
                 </FieldGroup>
               )}
             </>
@@ -287,6 +332,22 @@ export function PropertyPanel({
                     )
                   })}
                 </div>
+              </div>
+            )
+          })()}
+
+          {/* 执行截图 */}
+          {(() => {
+            const nr = nodeResults.find((r) => r.node_id === node.id)
+            if (!nr?.screenshot) return null
+            return (
+              <div className="pt-3 border-t border-white/5 space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">执行截图</p>
+                <img
+                  src={nr.screenshot}
+                  alt="执行截图"
+                  className="w-full rounded-xl border border-border/40 object-contain"
+                />
               </div>
             )
           })()}

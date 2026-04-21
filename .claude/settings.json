@@ -3,7 +3,27 @@
     "allow": [
       "Bash(npx tsc:*)",
       "Bash(pip install:*)",
-      "Bash(ls /Users/v_zhengshiwei/Desktop/work/langchain/open-test/open-server/seed*.py)"
+      "Bash(ls /Users/v_zhengshiwei/Desktop/work/langchain/open-test/open-server/seed*.py)",
+      "Bash(adb -s QW4TC6DUSWTCVO7D shell \"ls -la /dev/input/event2\")",
+      "Bash(pip show:*)",
+      "Bash(hdc -v)",
+      "Bash(hdc list:*)",
+      "Bash(hdc --help)",
+      "Bash(hdc --help verbose)",
+      "Bash(hdc -t MJE0224A24014212 file recv /data/local/tmp/layout.json /tmp/harmony_layout.json 2)",
+      "Bash(1 cat:*)",
+      "Bash(cd /Users/v_zhengshiwei/Desktop/work/langchain/open-test/cli pip install -e . -q)",
+      "Read(//usr/local/bin/**)",
+      "Read(//Users/v_zhengshiwei/.pyenv/**)",
+      "Bash(cd /Users/v_zhengshiwei/Desktop/work/langchain/open-test/cli python3.11 -m pip install -e . -q)",
+      "Bash(python3.11 -m open_test_agent.main --help)",
+      "Bash(lsof -i:7357)",
+      "Read(//proc/48865/**)",
+      "Bash(xargs kill:*)",
+      "Bash(/dev/null sleep:*)",
+      "Bash(ps -p 49005 -o command=)",
+      "Bash(python3.11 -m json.tool)",
+      "Bash(npm run:*)"
     ]
   }
 }
