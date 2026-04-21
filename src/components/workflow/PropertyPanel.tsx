@@ -110,9 +110,20 @@ export function PropertyPanel({
             <>
               {/* launch_app */}
               {d.action === "launch_app" && (
-                <FieldGroup label="App Package ID" description="例如：com.example.app">
-                  <Input value={(d.app_id as string) || ""} onChange={(e) => setField("app_id", e.target.value)} placeholder="com.example.app" className="h-8 text-xs font-mono rounded-2xl" />
-                </FieldGroup>
+                <>
+                  <FieldGroup label="App Package ID" description="例如：com.example.app">
+                    <Input value={(d.app_id as string) || ""} onChange={(e) => setField("app_id", e.target.value)} placeholder="com.example.app" className="h-8 text-xs font-mono rounded-2xl" />
+                  </FieldGroup>
+                  <FieldGroup label="启动方式">
+                    <Select value={(d.launch_type as string) || "cold"} onValueChange={(v) => setField("launch_type", v)}>
+                      <SelectTrigger className="h-8 text-sm rounded-2xl"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cold">冷启动 - 完全重启应用</SelectItem>
+                        <SelectItem value="warm">热启动 - 从后台恢复</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FieldGroup>
+                </>
               )}
 
               {/* tap_xy */}

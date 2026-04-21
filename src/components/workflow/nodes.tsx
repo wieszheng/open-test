@@ -6,6 +6,7 @@ import { memo } from "react"
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import { Snowflake, Flame } from "lucide-react"
 import {
   Globe,
   MousePointerClick,
@@ -196,27 +197,27 @@ export const STEP_TEMPLATES: StepTemplate[] = [
   },
   {
     type: "appClick",
-    label: "点击组件",
+    label: "点击",
     icon: Pointer,
     description: "点击 App 内组件",
     category: "app_ui",
-    defaultData: { label: "点击组件", action: "click", selector: "" },
+    defaultData: { label: "点击", action: "click", selector: "" },
   },
   {
     type: "appLongPress",
-    label: "长按组件",
+    label: "长按",
     icon: Hand,
     description: "长按 App 内组件",
     category: "app_ui",
-    defaultData: { label: "长按组件", action: "long_press", selector: "", duration_ms: 1000 },
+    defaultData: { label: "长按", action: "long_press", selector: "", duration_ms: 1000 },
   },
   {
     type: "appDoubleClick",
-    label: "双击组件",
+    label: "双击",
     icon: MousePointerClick,
     description: "双击 App 内组件",
     category: "app_ui",
-    defaultData: { label: "双击组件", action: "double_click", selector: "" },
+    defaultData: { label: "双击", action: "double_click", selector: "" },
   },
   {
     type: "appType",
@@ -252,11 +253,11 @@ export const STEP_TEMPLATES: StepTemplate[] = [
   },
   {
     type: "appWaitElement",
-    label: "等待组件",
+    label: "等待",
     icon: Eye,
     description: "等待 App 组件出现",
     category: "app_ui",
-    defaultData: { label: "等待组件", action: "wait_element", selector: "" },
+    defaultData: { label: "等待", action: "wait_element", selector: "" },
   },
   {
     type: "appGetText",
@@ -449,14 +450,14 @@ HttpRequestNode.displayName = "HttpRequestNode"
 
 const APP_UI_ACTION_LABELS: Record<string, string> = {
   launch_app:   "启动 App",
-  click:        "点击组件",
-  long_press:   "长按组件",
-  double_click: "双击组件",
+  click:        "点击",
+  long_press:   "长按",
+  double_click: "双击",
   type:         "输入文本",
   clear_text:   "清空文本",
   swipe:        "滑动屏幕",
   tap_xy:       "坐标点击",
-  wait_element: "等待组件",
+  wait_element: "等待",
   get_text:     "获取文本",
   screenshot:   "截图",
   press_key:    "按键操作",
@@ -469,8 +470,48 @@ function makeAppUiNode(nodeType: string) {
     const Icon = getStepIcon(nodeType)
     const d = data as AppUiStepData
     const actionLabel = APP_UI_ACTION_LABELS[d.action as string] || d.action
+
     // 节点预览：按 action 决定副标题内容
-    const preview = d.app_id || d.selector || d.coordinates || d.value || null
+    const getPreview = () => {
+      if (d.action === "launch_app") {
+        const isWarm = d.launch_type === "warm"
+        return (
+          <div className="space-y-1.5">
+            {/* 第一行：Package ID */}
+            <div className="text-[10px] text-muted-foreground/50 bg-muted/20 rounded-xl px-2 py-1 font-mono truncate">
+              {d.app_id || "未配置"}
+            </div>
+            {/* 第二行：冷/热启动标签 */}
+            <div className="flex gap-2">
+              {/* 冷启动标签 */}
+              <div className={cn(
+                "flex-1 inline-flex items-center justify-center gap-1 text-[10px] px-2 py-0.5 rounded-full border transition-all",
+                isWarm
+                  ? "bg-muted/30 text-muted-foreground/40 border-white/10"
+                  : "bg-blue-500/15 text-blue-400 border-blue-500/30"
+              )}>
+                <Snowflake className="w-2.5 h-2.5" />
+                冷启动
+              </div>
+              {/* 热启动标签 */}
+              <div className={cn(
+                "flex-1 inline-flex items-center justify-center gap-1 text-[10px] px-2 py-0.5 rounded-full border transition-all",
+                !isWarm
+                  ? "bg-muted/30 text-muted-foreground/40 border-white/10"
+                  : "bg-orange-500/15 text-orange-400 border-orange-500/30"
+              )}>
+                <Flame className="w-2.5 h-2.5" />
+                热启动
+              </div>
+            </div>
+          </div>
+        )
+      }
+      return d.app_id || d.selector || d.coordinates || d.value || null
+    }
+
+    const preview = getPreview()
+
     return (
       <div className={cn("relative rounded-2xl border-2 px-4 py-3 min-w-[200px] max-w-[260px] bg-sidebar shadow-sm transition-all", selected ? `${c.border} shadow-lg ring-2 ${c.ring}` : "border-white/10 hover:border-white/20")}>
         <StatusDot status={d.status} />
@@ -485,7 +526,11 @@ function makeAppUiNode(nodeType: string) {
           </div>
         </div>
         {preview && (
-          <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-xl px-2 py-1 font-mono truncate">{preview}</div>
+          typeof preview === "string" ? (
+            <div className="mt-1.5 text-[10px] text-muted-foreground/50 bg-muted/20 rounded-xl px-2 py-1 font-mono truncate">{preview}</div>
+          ) : (
+            <div className="mt-1.5">{preview}</div>
+          )
         )}
         <Handle type="source" position={Position.Right} className={cn(handleSourceClass, "!border-purple-500/40")} />
       </div>
