@@ -69,6 +69,8 @@ export interface AppUiStepData {
   selector?: string
   value?: string
   app_id?: string
+  /** 启动方式：cold = 冷起（先 force-stop 再启动），warm = 热起（直接启动） */
+  launch_type?: "cold" | "warm"
   coordinates?: string
   duration_ms?: number
   key_code?: string
@@ -193,7 +195,7 @@ export const STEP_TEMPLATES: StepTemplate[] = [
     icon: AppWindow,
     description: "启动目标 App",
     category: "app_ui",
-    defaultData: { label: "启动应用", action: "launch_app", app_id: "" },
+    defaultData: { label: "启动应用", action: "launch_app", app_id: "", launch_type: "cold" },
   },
   {
     type: "appClick",
