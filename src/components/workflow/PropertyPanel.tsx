@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Settings, X, Trash2, RefreshCw, AlertCircle } from "lucide-react"
+import { Settings, X, Trash2, RefreshCw, AlertCircle, ScanLine, Type } from "lucide-react"
 import type { DeviceConfig } from "./DeviceBar"
 import { APP_UI_NODE_TYPES } from "./nodes"
 
@@ -51,7 +51,7 @@ function drawBox(
 ) {
   ctx.save()
   ctx.strokeStyle = stroke; ctx.fillStyle = fill
-  ctx.lineWidth = dashed ? 0.8 : 1.8
+  ctx.lineWidth = dashed ? 3.2 : 4
   ctx.setLineDash(dashed ? [3, 3] : [])
   ctx.fillRect(x1, y1, x2 - x1, y2 - y1)
   ctx.strokeRect(x1, y1, x2 - x1, y2 - y1)
@@ -162,6 +162,9 @@ function InlinePicker({
   const [progress,    setProgress]    = useState(initialData ? 100 : 0)
   const [error,       setError]       = useState<string | null>(null)
 
+  const [showDom, setShowDom] = useState(true)
+  const [showOcr, setShowOcr] = useState(true)
+
   const [hov,    setHov]    = useState<{ type: "dom" | "ocr"; idx: number } | null>(null)
   const [sel,    setSel]    = useState<{ type: "dom" | "ocr" | "xy"; idx?: number } | null>(init.sel)
   const [marker, setMarker] = useState<{ devX: number; devY: number } | null>(init.marker)
@@ -180,8 +183,8 @@ function InlinePicker({
     const dw = screenData?.width ?? canvas.width; const dh = screenData?.height ?? canvas.height
     const cw = canvas.width; const ch = canvas.height
 
-    // DOM 层（tap_xy 不绘制）
-    if (action !== "tap_xy") {
+    // DOM 层（tap_xy 不绘制，开关关闭时跳过）
+    if (action !== "tap_xy" && showDom) {
       domElements.forEach((el, i) => {
         const x1c = cv(el.x1, dw, cw); const y1c = cv(el.y1, dh, ch)
         const x2c = cv(el.x2, dw, cw); const y2c = cv(el.y2, dh, ch)
@@ -192,11 +195,13 @@ function InlinePicker({
         } else if (isHov) {
           drawBox(ctx, x1c, y1c, x2c, y2c, "#60a5fa", "rgba(0,0,0,0)", false)
         } else {
-          drawBox(ctx, x1c, y1c, x2c, y2c, "rgba(96,165,250,0.4)", "rgba(0,0,0,0)", true)
+          drawBox(ctx, x1c, y1c, x2c, y2c, "rgba(96,165,250,0.65)", "rgba(0,0,0,0)", true)
         }
       })
+    }
 
-      // OCR 层
+    // OCR 层（开关关闭时跳过）
+    if (action !== "tap_xy" && showOcr) {
       ocrRegions.forEach((r, i) => {
         const x1c = cv(r.x1, dw, cw); const y1c = cv(r.y1, dh, ch)
         const x2c = cv(r.x2, dw, cw); const y2c = cv(r.y2, dh, ch)
@@ -209,14 +214,14 @@ function InlinePicker({
           drawBox(ctx, x1c, y1c, x2c, y2c, "#fb923c", "rgba(251,146,60,0.10)", false)
           drawLabel(ctx, r.text, x1c, y1c, "rgba(251,146,60,0.92)", cw)
         } else {
-          drawBox(ctx, x1c, y1c, x2c, y2c, "rgba(251,146,60,0.45)", "rgba(251,146,60,0.03)", true)
+          drawBox(ctx, x1c, y1c, x2c, y2c, "rgba(251,146,60,0.70)", "rgba(251,146,60,0.04)", true)
         }
       })
     }
 
     // 坐标标记
     if (marker) drawMarker(ctx, cv(marker.devX, dw, cw), cv(marker.devY, dh, ch), cw, ch)
-  }, [screenData, domElements, ocrRegions, hov, sel, marker])
+  }, [screenData, domElements, ocrRegions, showDom, showOcr, hov, sel, marker])
 
   useEffect(() => { redraw() }, [redraw])
 
@@ -305,35 +310,44 @@ function InlinePicker({
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const pos = getPos(e); if (!pos) return
-    const di = hitTest(pos.devX, pos.devY, domElements)
-    if (di !== null) { setHov({ type: "dom", idx: di }); return }
-    const oi = hitTest(pos.devX, pos.devY, ocrRegions)
-    setHov(oi !== null ? { type: "ocr", idx: oi } : null)
+    if (showDom) {
+      const di = hitTest(pos.devX, pos.devY, domElements)
+      if (di !== null) { setHov({ type: "dom", idx: di }); return }
+    }
+    if (showOcr) {
+      const oi = hitTest(pos.devX, pos.devY, ocrRegions)
+      if (oi !== null) { setHov({ type: "ocr", idx: oi }); return }
+    }
+    setHov(null)
   }
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const pos = getPos(e); if (!pos) return
 
-    // DOM 优先
-    const di = hitTest(pos.devX, pos.devY, domElements)
-    if (di !== null) {
-      const el = domElements[di]
-      const cx = Math.round((el.x1 + el.x2) / 2); const cy = Math.round((el.y1 + el.y2) / 2)
-      setSel({ type: "dom", idx: di }); setMarker(null)
-      const r: PickResult = { x: cx, y: cy, selector: el.selector || undefined, text: el.text || undefined,
-        bounds: { x1: el.x1, y1: el.y1, x2: el.x2, y2: el.y2 } }
-      setPicked(r); onPick(r); return
+    // DOM 优先（开关开启时）
+    if (showDom) {
+      const di = hitTest(pos.devX, pos.devY, domElements)
+      if (di !== null) {
+        const el = domElements[di]
+        const cx = Math.round((el.x1 + el.x2) / 2); const cy = Math.round((el.y1 + el.y2) / 2)
+        setSel({ type: "dom", idx: di }); setMarker(null)
+        const r: PickResult = { x: cx, y: cy, selector: el.selector || undefined, text: el.text || undefined,
+          bounds: { x1: el.x1, y1: el.y1, x2: el.x2, y2: el.y2 } }
+        setPicked(r); onPick(r); return
+      }
     }
 
-    // OCR 次之
-    const oi = hitTest(pos.devX, pos.devY, ocrRegions)
-    if (oi !== null) {
-      const r2 = ocrRegions[oi]
-      const cx = Math.round((r2.x1 + r2.x2) / 2); const cy = Math.round((r2.y1 + r2.y2) / 2)
-      setSel({ type: "ocr", idx: oi }); setMarker(null)
-      const r: PickResult = { x: cx, y: cy, text: r2.text,
-        bounds: { x1: r2.x1, y1: r2.y1, x2: r2.x2, y2: r2.y2 } }
-      setPicked(r); onPick(r); return
+    // OCR 次之（开关开启时）
+    if (showOcr) {
+      const oi = hitTest(pos.devX, pos.devY, ocrRegions)
+      if (oi !== null) {
+        const r2 = ocrRegions[oi]
+        const cx = Math.round((r2.x1 + r2.x2) / 2); const cy = Math.round((r2.y1 + r2.y2) / 2)
+        setSel({ type: "ocr", idx: oi }); setMarker(null)
+        const r: PickResult = { x: cx, y: cy, text: r2.text,
+          bounds: { x1: r2.x1, y1: r2.y1, x2: r2.x2, y2: r2.y2 } }
+        setPicked(r); onPick(r); return
+      }
     }
 
     // 坐标兜底：仅 tap_xy 节点允许
@@ -352,7 +366,7 @@ function InlinePicker({
 
   return (
     <div className="space-y-1.5">
-      {/* 标题行：已选信息 + 刷新按钮 */}
+      {/* 标题行：已选信息 + 图层开关 + 刷新按钮 */}
       <div className="flex items-center gap-1.5">
         <div className="flex-1 min-w-0">
           {label ? (
@@ -369,6 +383,37 @@ function InlinePicker({
             </p>
           )}
         </div>
+        {/* 图层开关（非 tap_xy 才显示） */}
+        {action !== "tap_xy" && screenData && (
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => setShowDom(v => !v)}
+              title="DOM 层"
+              className={cn(
+                "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium border transition-all",
+                showDom
+                  ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
+                  : "text-muted-foreground/30 border-white/10 hover:border-white/20",
+              )}
+            >
+              <ScanLine className="w-2.5 h-2.5" />
+              {domElements.length > 0 && <span className="opacity-60">{domElements.length}</span>}
+            </button>
+            <button
+              onClick={() => setShowOcr(v => !v)}
+              title="OCR 层"
+              className={cn(
+                "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium border transition-all",
+                showOcr
+                  ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                  : "text-muted-foreground/30 border-white/10 hover:border-white/20",
+              )}
+            >
+              <Type className="w-2.5 h-2.5" />
+              {ocrRegions.length > 0 && <span className="opacity-60">{ocrRegions.length}</span>}
+            </button>
+          </div>
+        )}
         <button
           onClick={fetchAll}
           disabled={isLoading}
