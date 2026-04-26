@@ -61,11 +61,11 @@ import { DeviceBar, type DeviceConfig } from "@/components/workflow/DeviceBar"
 import type { LogEntry, RunResult } from "@/components/workflow/types"
 
 const TYPE_META: Record<string, { icon: LucideIcon; label: string; color: string }> = {
-  api:  { icon: Globe,            label: "API", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
-  ui:   { icon: MousePointerClick, label: "UI",  color: "bg-orange-500/10 text-orange-500 border-orange-500/20" },
-  e2e:  { icon: Workflow,          label: "E2E", color: "bg-purple-500/10 text-purple-500 border-purple-500/20" },
-  unit: { icon: Cpu,               label: "单元", color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
-  perf: { icon: Zap,               label: "性能", color: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
+  api: { icon: Globe, label: "API", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
+  ui: { icon: MousePointerClick, label: "UI", color: "bg-orange-500/10 text-orange-500 border-orange-500/20" },
+  e2e: { icon: Workflow, label: "E2E", color: "bg-purple-500/10 text-purple-500 border-purple-500/20" },
+  unit: { icon: Cpu, label: "单元", color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
+  perf: { icon: Zap, label: "性能", color: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
 }
 
 export function WorkflowEditor() {
@@ -77,6 +77,7 @@ export function WorkflowEditor() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
 
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
+  const [panelOpen, setPanelOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance<Node, Edge> | null>(null)
@@ -167,8 +168,11 @@ export function WorkflowEditor() {
     [rfInstance, setNodes],
   )
 
-  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => setSelectedNode(node), [])
-  const onPaneClick = useCallback(() => setSelectedNode(null), [])
+  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+    setSelectedNode(node)
+    setPanelOpen(true)
+  }, [])
+  const onPaneClick = useCallback(() => setPanelOpen(false), [])
 
   const onUpdateNode = useCallback(
     (id: string, data: Record<string, unknown>) => {
@@ -182,6 +186,7 @@ export function WorkflowEditor() {
     (id: string) => {
       setNodes((nds) => nds.filter((n) => n.id !== id))
       setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id))
+      setPanelOpen(false)
       setSelectedNode(null)
     },
     [setNodes, setEdges],
@@ -190,11 +195,19 @@ export function WorkflowEditor() {
   const handleClear = useCallback(() => {
     setNodes([])
     setEdges([])
+    setPanelOpen(false)
     setSelectedNode(null)
     setLogs([])
     setRunResult(null)
     setNodeResults([])
   }, [setNodes, setEdges])
+
+  useEffect(() => {
+    if (!selectedNode) return
+    if (panelOpen) return
+    const timer = setTimeout(() => setSelectedNode(null), 220)
+    return () => clearTimeout(timer)
+  }, [panelOpen, selectedNode])
 
   const handleSave = useCallback(async () => {
     if (!testCase) return
@@ -331,51 +344,61 @@ export function WorkflowEditor() {
   return (
     <div className="flex h-full">
       <div className="flex flex-1 overflow-hidden">
-        <StepPalette />
-
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 relative">
+            {/* 步骤面板 - 悬浮在画布左上角 */}
+            <StepPalette />
+
             {/* 顶部工具栏：直接绝对定位在画布 div 上，避免被 ReactFlow overflow:hidden 裁切 */}
             <div className="absolute top-3 inset-x-0 z-10 flex justify-center pointer-events-none">
               <div className="flex items-center gap-2 pointer-events-auto">
-                {/* 左胶囊：测试用例选择 + 执行结果 */}
-                <div className="flex items-center gap-1 bg-sidebar/90 backdrop-blur-md border border-border/60 shadow-sm rounded-full px-1.5 py-1 h-9">
+                {/* 测试用例容器 */}
+                <div className="flex items-center bg-sidebar/95 backdrop-blur-sm border border-border/80 shadow-sm rounded-xl p-1 h-11">
                   {testCase && tm ? (
                     <button
-                      className="flex items-center gap-1.5 cursor-pointer hover:bg-muted/60 px-2 py-1 rounded-full transition-colors"
+                      className="h-9 flex items-center gap-2 cursor-pointer hover:bg-muted/60 px-2.5 rounded-lg transition-all duration-200"
                       onClick={() => setTcPickerOpen(true)}
                     >
-                      <div className={cn("w-5 h-5 rounded-full flex items-center justify-center shrink-0", tm.color.replace("text-", "bg-").split(" ")[0], tm.color.split(" ").slice(2).join(" "))}>
-                        <tm.icon className={cn("w-2.5 h-2.5", tm.color.split(" ")[1])} />
+                      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", tm.color.replace("text-", "bg-").split(" ")[0], tm.color.split(" ").slice(2).join(" "))}>
+                        <tm.icon className={cn("w-3.5 h-3.5", tm.color.split(" ")[1])} />
                       </div>
-                      <span className="text-xs font-medium max-w-[120px] truncate">{testCase.name}</span>
-                      <span className="text-[10px] text-muted-foreground hidden sm:block">{testCase.module}</span>
+                      <span className="text-sm font-semibold max-w-[120px] truncate">{testCase.name}</span>
+                      <span className="text-xs text-muted-foreground hidden sm:block">{testCase.module}</span>
                     </button>
                   ) : (
                     <button
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-muted/60 transition-colors text-xs text-muted-foreground border border-dashed border-border/60"
+                      className="h-9 flex items-center gap-2 px-2.5 rounded-lg hover:bg-muted/60 transition-all duration-200 text-sm text-muted-foreground border border-dashed border-border/60"
                       onClick={() => setTcPickerOpen(true)}
                     >
-                      <FlaskConical className="w-3.5 h-3.5 text-coral" />
+                      <div className="w-7 h-7 rounded-lg bg-coral/15 flex items-center justify-center">
+                        <FlaskConical className="w-4 h-4 text-coral" />
+                      </div>
                       选择测试用例
                     </button>
                   )}
-                  {runResult && (
-                    <div className={cn(
-                      "flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ml-0.5",
-                      runResult.failed === 0
-                        ? "bg-green-500/10 text-green-500 border-green-500/20"
-                        : "bg-red-500/10 text-red-400 border-red-500/20"
-                    )}>
-                      {runResult.failed === 0
-                        ? <><CheckCircle2 className="w-2.5 h-2.5" />{runResult.passed}/{runResult.total}</>
-                        : <><XCircle className="w-2.5 h-2.5" />{runResult.failed} 失败</>}
-                    </div>
-                  )}
                 </div>
 
-                {/* 中胶囊：步骤 & 连接统计 */}
-                <div className="flex items-center gap-3 bg-sidebar/90 backdrop-blur-md border border-border/60 shadow-sm rounded-full px-3 h-9 text-xs text-muted-foreground">
+                {/* 执行结果容器 */}
+                {runResult && (
+                  <div className={cn(
+                    "h-11 flex items-center bg-sidebar/95 backdrop-blur-sm border border-border/80 shadow-sm rounded-xl px-2 py-1",
+                    runResult.failed === 0
+                      ? "text-green-500"
+                      : "text-red-400"
+                  )}>
+                    <div className={cn(
+                      "h-9 px-2.5 rounded-lg flex items-center gap-1.5 text-sm font-semibold",
+                      runResult.failed === 0 ? "bg-green-500/10" : "bg-red-500/10"
+                    )}>
+                      {runResult.failed === 0
+                        ? <><CheckCircle2 className="w-4 h-4" />{runResult.passed}/{runResult.total}</>
+                        : <><XCircle className="w-4 h-4" />{runResult.failed} 失败</>}
+                    </div>
+                  </div>
+                )}
+
+                {/* 统计容器 */}
+                <div className="h-11 flex items-center gap-3 bg-sidebar/95 backdrop-blur-sm border border-border/80 shadow-sm rounded-xl px-3 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Layers className="w-3 h-3" />
                     {nodes.length}
@@ -390,30 +413,32 @@ export function WorkflowEditor() {
                 {/* 设备选择胶囊 */}
                 <DeviceBar value={deviceConfig} onChange={setDeviceConfig} />
 
-                {/* 右胶囊：操作按钮 */}
-                <div className="flex items-center gap-0.5 bg-sidebar/90 backdrop-blur-md border border-border/60 shadow-sm rounded-full px-1.5 py-1 h-9">
+                {/* 操作容器 */}
+                <div className="h-11 flex items-center gap-1 bg-sidebar/95 backdrop-blur-sm border border-border/80 shadow-sm rounded-xl px-1.5">
                   {nodes.length > 0 && (
                     <button
-                      className="p-1.5 rounded-full hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
+                      className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-all duration-200"
                       onClick={() => setClearDialogOpen(true)}
                       disabled={isRunning}
                       title="清空画布"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   )}
                   <button
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-muted/60 transition-colors text-xs disabled:opacity-40 whitespace-nowrap"
+                    className="h-9 flex items-center gap-2 px-2.5 rounded-lg hover:bg-muted/60 transition-all duration-200 text-sm font-semibold disabled:opacity-40 whitespace-nowrap"
                     onClick={handleSave}
                     disabled={isSaving || !testCase}
                     title="保存"
                   >
-                    {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    <div className="w-7 h-7 rounded-lg bg-muted/60 flex items-center justify-center">
+                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    </div>
                     保存
                   </button>
                   <button
                     type="button"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-coral hover:bg-coral/90 text-white text-xs font-medium transition-colors disabled:opacity-40 shadow-sm shadow-coral/30 whitespace-nowrap"
+                    className="h-9 flex items-center gap-2 px-3 rounded-lg bg-coral hover:bg-coral/90 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-40 shadow-sm shadow-coral/30 whitespace-nowrap"
                     onClick={(e) => {
                       console.log("🔵 按钮点击事件")
                       e.preventDefault()
@@ -422,7 +447,9 @@ export function WorkflowEditor() {
                     }}
                     disabled={isRunning || !testCase || nodes.length === 0}
                   >
-                    {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+                    <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
+                      {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                    </div>
                     {isRunning ? "执行中" : "执行"}
                   </button>
                 </div>
@@ -449,8 +476,16 @@ export function WorkflowEditor() {
                 style: { strokeDasharray: "6 3" },
                 markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
               }}
+              defaultViewport={{ x: 100, y: 100, zoom: 1.0 }}
+              minZoom={0.1}
+              maxZoom={4}
+              fitViewOptions={{
+                padding: 0.2,
+                maxZoom: 1.2,
+                minZoom: 0.5,
+              }}
               fitView
-              fitViewOptions={{ padding: 0.3 }}
+
               snapToGrid
               snapGrid={[16, 16]}
               deleteKeyCode={["Backspace", "Delete"]}
@@ -511,20 +546,36 @@ export function WorkflowEditor() {
                 </Panel>
               )}
             </ReactFlow>
+
+            {selectedNode && (
+              <div className="absolute inset-y-0 right-0 z-30 pointer-events-none">
+                <div
+                  className={cn(
+                    "h-full transition-all duration-200 ease-out overflow-hidden pointer-events-auto",
+                    panelOpen ? "w-90 opacity-100" : "w-0 opacity-0"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "h-full w-90 transition-transform duration-200 ease-out",
+                      panelOpen ? "translate-x-0" : "translate-x-full"
+                    )}
+                  >
+                    <PropertyPanel
+                      node={selectedNode}
+                      onClose={() => setPanelOpen(false)}
+                      onUpdate={onUpdateNode}
+                      onDelete={onDeleteNode}
+                      logs={logs}
+                      nodeResults={nodeResults}
+                      deviceConfig={deviceConfig}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-
-        {selectedNode && (
-          <PropertyPanel
-            node={selectedNode}
-            onClose={() => setSelectedNode(null)}
-            onUpdate={onUpdateNode}
-            onDelete={onDeleteNode}
-            logs={logs}
-            nodeResults={nodeResults}
-            deviceConfig={deviceConfig}
-          />
-        )}
       </div>
 
       <RunResultToast result={runResult} onClose={() => setRunResult(null)} />

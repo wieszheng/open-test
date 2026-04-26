@@ -120,9 +120,9 @@ export function DeviceBar({
       <DropdownMenuTrigger asChild>
         <button
           className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1 rounded-full",
-            "bg-sidebar/90 backdrop-blur-md border border-border/60 shadow-sm h-9",
-            "hover:bg-muted/60 transition-colors text-xs",
+            "h-11 flex items-center gap-1.5 px-2.5 rounded-xl",
+            "bg-sidebar/95 backdrop-blur-sm border border-border/80 shadow-sm",
+            "hover:bg-muted/60 transition-all duration-200 text-xs",
             "focus:outline-none"
           )}
         >
